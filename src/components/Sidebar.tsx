@@ -22,7 +22,12 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeTab, setActiveTab, onOpenPromo, isCollapsed, setIsCollapsed }: SidebarProps) {
-  const navItems = [
+  const navItems: Array<{
+    id: string;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge?: string;
+  }> = [
     { id: 'menu_inicial', label: 'Menu Inicial', icon: Home },
     { id: 'passagem_plantao', label: 'Passagem de Plantão', icon: Coffee },
     { id: 'ocorrencias', label: 'Ocorrências', icon: ClipboardList },

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, getAuthUsers, saveAuthUsers, updateCurrentUserSession, getCurrentUser } from '../lib/authStore';
 import { Camera, Save, KeyRound, User as UserIcon, CheckCircle2, AlertTriangle, Eye, EyeOff, Briefcase, Plus, Trash2, X } from 'lucide-react';
+import { SantaLuziaPatio360Bg } from '../components/perfil/SantaLuziaPatio360Bg';
 
 const DEFAULT_ROLES = ['Líder', 'Interino', 'Operador', 'Mestre', 'Administrador CCO'];
 
@@ -113,14 +114,14 @@ export function Perfil() {
   if (!currentUser) return null;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] animate-in fade-in">
-      <div className="w-full max-w-md rounded-3xl bg-[#0c1017]/85 border border-[#c9a265]/40 p-8 shadow-2xl relative overflow-hidden">
+    <SantaLuziaPatio360Bg>
+      <div className="w-full max-w-md rounded-3xl bg-[#0c1017]/90 backdrop-blur-xl border-2 border-[#c9a265]/50 p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.85)] relative overflow-hidden my-4">
         {/* Decorative Top Highlight */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#c9a265] to-transparent" />
         
         <div className="text-center mb-6">
           <h2 className="text-2xl font-serif font-bold text-white mb-2">Meu Perfil</h2>
-          <p className="text-xs text-slate-400">Gerencie suas credenciais de acesso.</p>
+          <p className="text-xs text-slate-300">Gerencie suas credenciais de acesso e função.</p>
         </div>
 
         {/* Profile Picture Upload */}
@@ -285,12 +286,12 @@ export function Perfil() {
 
         <button
           onClick={handleSave}
-          className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] text-[#140e06] font-bold text-sm flex items-center justify-center space-x-2 hover:opacity-95 transition-opacity"
+          className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] text-[#140e06] font-bold text-sm flex items-center justify-center space-x-2 hover:opacity-95 transition-opacity cursor-pointer shadow-lg"
         >
           <Save className="w-4 h-4" />
           <span>Salvar Alterações</span>
         </button>
       </div>
-    </div>
+    </SantaLuziaPatio360Bg>
   );
 }
