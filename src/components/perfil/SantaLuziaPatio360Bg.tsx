@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { RotateCw, Compass, MapPin, Eye, EyeOff, User as UserIcon, Maximize2 } from 'lucide-react';
-import santaLuziaPatioImg from '../../assets/images/santa_luzia_patio_logistica_360_1787083501915.jpg';
+import { RotateCw, Compass, Building2, Eye, EyeOff, User as UserIcon, ZoomIn, ZoomOut } from 'lucide-react';
+import admin3coracoesImg from '../../assets/images/admin_3coracoes_360_1787085202995.jpg';
 
 interface SantaLuziaPatio360BgProps {
   children?: React.ReactNode;
@@ -9,6 +9,7 @@ interface SantaLuziaPatio360BgProps {
 
 export function SantaLuziaPatio360Bg({ children }: SantaLuziaPatio360BgProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -17,7 +18,8 @@ export function SantaLuziaPatio360Bg({ children }: SantaLuziaPatio360BgProps) {
   const latRef = useRef(0);
   const targetLonRef = useRef(0);
   const targetLatRef = useRef(0);
-  const fovRef = useRef(90);
+  // Default wide FOV (105) for zoomed-out panoramic perspective
+  const fovRef = useRef(105);
   const [isAutoRotate, setIsAutoRotate] = useState(true);
   const isAutoRotateRef = useRef(true);
   const [is360Only, setIs360Only] = useState(false);
@@ -25,6 +27,20 @@ export function SantaLuziaPatio360Bg({ children }: SantaLuziaPatio360BgProps) {
   useEffect(() => {
     isAutoRotateRef.current = isAutoRotate;
   }, [isAutoRotate]);
+
+  // Handle Zoom In / Out / Reset
+  const handleZoom = (direction: 'in' | 'out' | 'reset') => {
+    if (!cameraRef.current) return;
+    if (direction === 'in') {
+      fovRef.current = Math.max(50, fovRef.current - 12);
+    } else if (direction === 'out') {
+      fovRef.current = Math.min(115, fovRef.current + 12);
+    } else {
+      fovRef.current = 105;
+    }
+    cameraRef.current.fov = fovRef.current;
+    cameraRef.current.updateProjectionMatrix();
+  };
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -56,7 +72,7 @@ export function SantaLuziaPatio360Bg({ children }: SantaLuziaPatio360BgProps) {
     sphereGeometry.scale(-1, 1, 1);
 
     const textureLoader = new THREE.TextureLoader();
-    const texture = textureLoader.load(santaLuziaPatioImg, () => {
+    const texture = textureLoader.load(admin3coracoesImg, () => {
       texture.minFilter = THREE.LinearMipmapLinearFilter;
       texture.magFilter = THREE.LinearFilter;
       texture.generateMipmaps = true;
@@ -68,7 +84,7 @@ export function SantaLuziaPatio360Bg({ children }: SantaLuziaPatio360BgProps) {
     scene.add(sphereMesh);
 
     // 4. Subtle Ambient Floating Dust / Golden Particles
-    const particleCount = 180;
+    const particleCount = 160;
     const particleGeometry = new THREE.BufferGeometry();
     const particlePositions = new Float32Array(particleCount * 3);
 
@@ -97,7 +113,15 @@ export function SantaLuziaPatio360Bg({ children }: SantaLuziaPatio360BgProps) {
 
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement;
-      if (target && target.closest('button, input, select, a, textarea, .prevent-360-drag')) {
+      if (
+        target &&
+        (target.closest('button') ||
+          target.closest('input') ||
+          target.closest('select') ||
+          target.closest('textarea') ||
+          target.closest('a') ||
+          target.closest('.prevent-360-drag'))
+      ) {
         return;
       }
       isInteractingRef.current = true;
@@ -105,7 +129,9 @@ export function SantaLuziaPatio360Bg({ children }: SantaLuziaPatio360BgProps) {
       onPointerDownMouseY = e.clientY;
       onPointerDownLon = lonRef.current;
       onPointerDownLat = latRef.current;
-      container.style.cursor = 'grabbing';
+      if (wrapperRef.current) {
+        wrapperRef.current.style.cursor = 'grabbing';
+      }
     };
 
     const onPointerMove = (e: PointerEvent) => {
@@ -116,12 +142,29 @@ export function SantaLuziaPatio360Bg({ children }: SantaLuziaPatio360BgProps) {
 
     const onPointerUp = () => {
       isInteractingRef.current = false;
-      container.style.cursor = 'grab';
+      if (wrapperRef.current) {
+        wrapperRef.current.style.cursor = 'grab';
+      }
     };
 
-    container.addEventListener('pointerdown', onPointerDown);
+    const onWheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && target.closest('.prevent-360-drag')) {
+        return;
+      }
+      e.preventDefault();
+      fovRef.current = THREE.MathUtils.clamp(fovRef.current + e.deltaY * 0.05, 50, 115);
+      if (cameraRef.current) {
+        cameraRef.current.fov = fovRef.current;
+        cameraRef.current.updateProjectionMatrix();
+      }
+    };
+
+    const wrapper = wrapperRef.current || container;
+    wrapper.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    wrapper.addEventListener('wheel', onWheel, { passive: false });
 
     // 6. Resize Observer
     const resizeObserver = new ResizeObserver((entries) => {
@@ -174,9 +217,10 @@ export function SantaLuziaPatio360Bg({ children }: SantaLuziaPatio360BgProps) {
     return () => {
       cancelAnimationFrame(animationFrameId);
       resizeObserver.disconnect();
-      container.removeEventListener('pointerdown', onPointerDown);
+      wrapper.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      wrapper.removeEventListener('wheel', onWheel);
 
       sphereGeometry.dispose();
       sphereMaterial.dispose();
@@ -191,46 +235,50 @@ export function SantaLuziaPatio360Bg({ children }: SantaLuziaPatio360BgProps) {
   }, []);
 
   return (
-    <div className="relative w-full min-h-[calc(100vh-6rem)] rounded-3xl overflow-hidden border-2 border-[#c9a265]/40 shadow-2xl bg-[#090d14]">
+    <div
+      ref={wrapperRef}
+      className="relative w-full min-h-[calc(100vh-6rem)] rounded-3xl overflow-hidden border-2 border-[#c9a265]/40 shadow-2xl bg-[#090d14] cursor-grab select-none"
+    >
       {/* 360 WebGL Three.js Canvas Container */}
       <div
         ref={containerRef}
-        className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing z-0"
+        className="absolute inset-0 w-full h-full pointer-events-none z-0"
       />
 
       {/* Subtle Vignette & Depth Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/60 pointer-events-none z-1" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/50 pointer-events-none z-[1]" />
 
-      {/* Top Location Info & 360 Badge */}
-      <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-10">
-        <div className="flex items-center space-x-2.5 bg-[#0b111b]/85 backdrop-blur-md px-4 py-2 rounded-2xl border border-[#c9a265]/60 shadow-xl pointer-events-auto">
-          <div className="w-7 h-7 rounded-xl bg-[#c9a265]/20 border border-[#c9a265] flex items-center justify-center">
-            <MapPin className="w-4 h-4 text-[#dfbe85]" />
+      {/* Top Header HUD Bar */}
+      <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 flex flex-wrap items-center justify-between gap-2 pointer-events-none z-40">
+        <div className="flex items-center space-x-2 sm:space-x-2.5 bg-[#0b111b]/90 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl border border-[#c9a265]/60 shadow-xl pointer-events-auto">
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-[#c9a265]/20 border border-[#c9a265] flex items-center justify-center">
+            <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#dfbe85]" />
           </div>
           <div>
-            <h4 className="text-xs font-bold text-white font-serif flex items-center space-x-1.5">
-              <span>Pátio da Logística &bull; Santa Luzia - MG</span>
+            <h4 className="text-[11px] sm:text-xs font-bold text-white font-serif flex items-center space-x-1.5">
+              <span>Sede Administrativa &bull; Grupo 3corações</span>
               <span className="px-1.5 py-0.5 rounded-full bg-[#c9a265]/20 border border-[#c9a265]/60 text-[9px] font-mono text-[#dfbe85]">
                 4K 360°
               </span>
             </h4>
-            <p className="text-[10.5px] text-slate-300">
-              Centro de Distribuição & Frotas Grupo 3corações
+            <p className="text-[9.5px] sm:text-[10.5px] text-slate-300">
+              Centro Executivo Corporativo &bull; Diretoria
             </p>
           </div>
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center space-x-2 pointer-events-auto">
-          {/* Toggle View Only 360 */}
+        {/* Action Controls */}
+        <div className="flex items-center space-x-1.5 sm:space-x-2 pointer-events-auto bg-[#0b111b]/85 backdrop-blur-md p-1 rounded-2xl border border-[#232f45] shadow-xl">
+          {/* Toggle View Only 360 Mode */}
           <button
-            onClick={() => setIs360Only(!is360Only)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 backdrop-blur-md border transition-all cursor-pointer shadow-lg ${
+            type="button"
+            onClick={() => setIs360Only((prev) => !prev)}
+            className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer shadow-md ${
               is360Only
-                ? 'bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] text-[#140e06] border-white/40 ring-2 ring-[#c9a265]/50'
-                : 'bg-[#0f1624]/90 text-[#dfbe85] hover:text-white border-[#c9a265]/50 hover:bg-[#1a2436]'
+                ? 'bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] text-[#140e06] font-extrabold border border-white/50 ring-2 ring-[#c9a265]/60'
+                : 'bg-[#141c2c] text-[#dfbe85] hover:text-white border border-[#c9a265]/50 hover:bg-[#1f2b42]'
             }`}
-            title={is360Only ? 'Exibir formulário de perfil' : 'Ocultar perfil e ver apenas o cenário 360°'}
+            title={is360Only ? 'Exibir formulário do perfil' : 'Ocultar perfil e ver apenas o cenário 360°'}
           >
             {is360Only ? (
               <>
@@ -245,37 +293,59 @@ export function SantaLuziaPatio360Bg({ children }: SantaLuziaPatio360BgProps) {
             )}
           </button>
 
+          {/* Zoom Out Button */}
+          <button
+            type="button"
+            onClick={() => handleZoom('out')}
+            className="p-1.5 sm:p-2 rounded-xl text-slate-300 hover:text-white hover:bg-[#1f2b42] transition-all cursor-pointer"
+            title="Afastar Visão 360° (Zoom Out)"
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Zoom In Button */}
+          <button
+            type="button"
+            onClick={() => handleZoom('in')}
+            className="p-1.5 sm:p-2 rounded-xl text-slate-300 hover:text-white hover:bg-[#1f2b42] transition-all cursor-pointer"
+            title="Aproximar Visão 360° (Zoom In)"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+          </button>
+
           {/* Auto Rotate Control */}
           <button
+            type="button"
             onClick={() => setIsAutoRotate(!isAutoRotate)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 backdrop-blur-md border transition-all cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
               isAutoRotate
-                ? 'bg-[#c9a265] text-[#140e06] border-white/30 shadow-lg'
-                : 'bg-[#0f1624]/90 text-slate-300 hover:text-white border-[#28374f]'
+                ? 'bg-[#c9a265] text-[#140e06] border border-white/30 shadow-md'
+                : 'bg-[#141c2c] text-slate-300 hover:text-white border border-[#28374f]'
             }`}
             title={isAutoRotate ? 'Pausar Giro 360°' : 'Ativar Giro 360°'}
           >
             <RotateCw className={`w-3.5 h-3.5 ${isAutoRotate ? 'animate-spin-slow' : ''}`} />
-            <span className="hidden sm:inline">
+            <span className="hidden md:inline">
               {isAutoRotate ? 'Giro Ativo' : 'Pausado'}
             </span>
           </button>
         </div>
       </div>
 
-      {/* Interactive Drag Hint / 360 Only Notice */}
-      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none z-10">
-        <div className="flex items-center space-x-2 text-[11px] text-[#dfbe85] bg-[#0c111a]/85 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-[#232f45] shadow-lg pointer-events-auto">
-          <Compass className="w-4 h-4 animate-spin-slow text-[#c9a265]" />
-          <span>Arraste com o mouse para explorar o pátio em 360°</span>
+      {/* Bottom HUD Bar (Hint and Return Button) */}
+      <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 right-3 sm:right-4 flex items-center justify-between pointer-events-none z-40">
+        <div className="flex items-center space-x-2 text-[10.5px] sm:text-[11px] text-[#dfbe85] bg-[#0c111a]/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-[#232f45] shadow-lg pointer-events-auto">
+          <Compass className="w-3.5 h-3.5 animate-spin-slow text-[#c9a265]" />
+          <span>Arraste para girar &bull; Scroll para zoom</span>
         </div>
 
         {is360Only && (
           <button
+            type="button"
             onClick={() => setIs360Only(false)}
-            className="flex items-center space-x-1.5 text-xs text-white bg-[#0c111a]/95 hover:bg-[#1a2436] backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-[#c9a265]/60 shadow-xl pointer-events-auto cursor-pointer transition-all"
+            className="flex items-center space-x-1.5 text-xs font-bold text-white bg-[#0c111a]/95 hover:bg-[#1a2436] backdrop-blur-md px-4 py-2 rounded-xl border border-[#c9a265] shadow-[0_4px_20px_rgba(201,162,101,0.3)] pointer-events-auto cursor-pointer transition-all animate-pulse"
           >
-            <UserIcon className="w-3.5 h-3.5 text-[#dfbe85]" />
+            <UserIcon className="w-4 h-4 text-[#dfbe85]" />
             <span>Voltar ao Meu Perfil</span>
           </button>
         )}
@@ -283,16 +353,19 @@ export function SantaLuziaPatio360Bg({ children }: SantaLuziaPatio360BgProps) {
 
       {/* Foreground Content (Profile Card) */}
       <div
-        className={`relative z-10 w-full h-full flex flex-col items-center justify-center p-4 sm:p-6 my-auto min-h-[calc(100vh-8rem)] transition-all duration-300 ${
+        className={`absolute inset-0 z-20 flex flex-col items-center justify-center p-3 sm:p-6 overflow-y-auto pointer-events-none transition-all duration-300 ${
           is360Only
-            ? 'opacity-0 pointer-events-none scale-95 translate-y-4'
-            : 'opacity-100 pointer-events-auto scale-100 translate-y-0'
+            ? 'opacity-0 invisible pointer-events-none scale-90 translate-y-6'
+            : 'opacity-100 visible scale-100 translate-y-0'
         }`}
       >
-        <div className="prevent-360-drag w-full flex justify-center">
-          {children}
+        <div className="w-full flex justify-center py-4">
+          <div className="prevent-360-drag pointer-events-auto w-full flex justify-center">
+            {children}
+          </div>
         </div>
       </div>
     </div>
   );
 }
+

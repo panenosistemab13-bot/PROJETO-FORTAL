@@ -115,28 +115,28 @@ export function Perfil() {
 
   return (
     <SantaLuziaPatio360Bg>
-      <div className="w-full max-w-md rounded-3xl bg-[#0c1017]/90 backdrop-blur-xl border-2 border-[#c9a265]/50 p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.85)] relative overflow-hidden my-4">
+      <div className="w-full max-w-[380px] rounded-3xl bg-[#0c1017]/90 backdrop-blur-xl border-2 border-[#c9a265]/50 p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.85)] relative overflow-hidden my-2">
         {/* Decorative Top Highlight */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#c9a265] to-transparent" />
         
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-serif font-bold text-white mb-2">Meu Perfil</h2>
-          <p className="text-xs text-slate-300">Gerencie suas credenciais de acesso e função.</p>
+        <div className="text-center mb-4">
+          <h2 className="text-xl font-serif font-bold text-white mb-1">Meu Perfil</h2>
+          <p className="text-[11px] text-slate-300">Gerencie suas credenciais de acesso e função.</p>
         </div>
 
         {/* Profile Picture Upload */}
-        <div className="flex flex-col items-center mb-8 relative">
+        <div className="flex flex-col items-center mb-5 relative">
           <div 
-            className="w-24 h-24 rounded-full border-2 border-[#c9a265] bg-[#121824] flex items-center justify-center overflow-hidden mb-3 relative group cursor-pointer"
+            className="w-20 h-20 rounded-full border-2 border-[#c9a265] bg-[#121824] flex items-center justify-center overflow-hidden mb-2 relative group cursor-pointer shadow-lg"
             onClick={() => fileInputRef.current?.click()}
           >
             {profilePic ? (
               <img src={profilePic} alt="Perfil" className="w-full h-full object-cover" />
             ) : (
-              <UserIcon className="w-8 h-8 text-[#c9a265]/50" />
+              <UserIcon className="w-7 h-7 text-[#c9a265]/60" />
             )}
             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <Camera className="w-6 h-6 text-white" />
+              <Camera className="w-5 h-5 text-white" />
             </div>
           </div>
           <input 
@@ -148,26 +148,26 @@ export function Perfil() {
           />
           <div className="text-center">
             <p className="text-sm font-bold text-slate-200">{currentUser.fixedName}</p>
-            <p className="text-xs text-[#c9a265] uppercase tracking-wider">{currentUser.role}</p>
+            <p className="text-[11px] text-[#c9a265] font-semibold uppercase tracking-wider">{currentUser.role}</p>
           </div>
         </div>
 
         {/* Messages */}
         {errorMsg && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-950/70 border border-rose-800/80 text-rose-200 text-xs flex items-center space-x-2.5">
+          <div className="mb-3 p-2.5 rounded-xl bg-rose-950/70 border border-rose-800/80 text-rose-200 text-xs flex items-center space-x-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
         
         {successMsg && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-950/70 border border-emerald-800/80 text-emerald-200 text-xs flex items-center space-x-2.5">
+          <div className="mb-3 p-2.5 rounded-xl bg-emerald-950/70 border border-emerald-800/80 text-emerald-200 text-xs flex items-center space-x-2">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{successMsg}</span>
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           <div className="space-y-1">
             <label className="text-[11px] font-bold text-slate-300">Novo Login</label>
             <div className="relative flex items-center">
@@ -178,7 +178,7 @@ export function Perfil() {
                 type="text"
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#141b26]/90 border border-[#242d3d] focus:border-[#c9a265] text-sm text-slate-100 outline-none"
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#141b26]/90 border border-[#242d3d] focus:border-[#c9a265] text-xs sm:text-sm text-slate-100 outline-none"
               />
             </div>
           </div>
@@ -193,12 +193,12 @@ export function Perfil() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-[#141b26]/90 border border-[#242d3d] focus:border-[#c9a265] text-sm text-slate-100 outline-none"
+                className="w-full pl-9 pr-10 py-2 rounded-xl bg-[#141b26]/90 border border-[#242d3d] focus:border-[#c9a265] text-xs sm:text-sm text-slate-100 outline-none"
               />
               <button 
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 text-slate-400 hover:text-[#c9a265] transition-colors"
+                className="absolute right-3 text-slate-400 hover:text-[#c9a265] transition-colors cursor-pointer"
                 title={showPassword ? 'Ocultar senha' : 'Ver senha'}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -213,7 +213,7 @@ export function Perfil() {
                 <button 
                   type="button" 
                   onClick={() => setIsAddingRole(true)}
-                  className="text-[10px] text-[#c9a265] hover:text-white flex items-center"
+                  className="text-[10px] text-[#c9a265] hover:text-white flex items-center cursor-pointer"
                 >
                   <Plus className="w-3 h-3 mr-1" /> Adicionar
                 </button>
@@ -221,27 +221,27 @@ export function Perfil() {
             </div>
             
             {isAddingRole ? (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1.5">
                 <input
                   type="text"
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value)}
                   placeholder="Nova função..."
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#141b26]/90 border border-[#242d3d] focus:border-[#c9a265] text-sm text-slate-100 outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-[#141b26]/90 border border-[#242d3d] focus:border-[#c9a265] text-xs text-slate-100 outline-none"
                   onKeyDown={(e) => e.key === 'Enter' && handleAddRole()}
                   autoFocus
                 />
                 <button
                   type="button"
                   onClick={handleAddRole}
-                  className="p-2.5 rounded-xl bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40"
+                  className="p-2 rounded-xl bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => { setIsAddingRole(false); setNewRole(''); }}
-                  className="p-2.5 rounded-xl bg-rose-600/20 text-rose-400 hover:bg-rose-600/40"
+                  className="p-2 rounded-xl bg-rose-600/20 text-rose-400 hover:bg-rose-600/40 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -255,7 +255,7 @@ export function Perfil() {
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
-                    className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-[#141b26]/90 border border-[#242d3d] focus:border-[#c9a265] text-sm text-slate-100 outline-none appearance-none cursor-pointer"
+                    className="w-full pl-9 pr-10 py-2 rounded-xl bg-[#141b26]/90 border border-[#242d3d] focus:border-[#c9a265] text-xs sm:text-sm text-slate-100 outline-none appearance-none cursor-pointer"
                   >
                     {availableRoles.map(r => (
                       <option key={r} value={r}>{r}</option>
@@ -263,14 +263,14 @@ export function Perfil() {
                   </select>
                 </div>
                 {availableRoles.length > 1 && (
-                  <div className="flex flex-wrap gap-2 pt-2">
+                  <div className="flex flex-wrap gap-1.5 pt-1">
                     {availableRoles.map(r => (
-                      <div key={r} className={`flex items-center space-x-1 px-2 py-1 rounded-md text-[10px] ${r === role ? 'bg-[#c9a265]/20 text-[#c9a265]' : 'bg-[#141b26] text-slate-400'}`}>
+                      <div key={r} className={`flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] ${r === role ? 'bg-[#c9a265]/20 text-[#c9a265] border border-[#c9a265]/40' : 'bg-[#141b26] text-slate-400'}`}>
                         <span>{r}</span>
                         <button 
                           type="button"
                           onClick={() => handleDeleteRole(r)}
-                          className="hover:text-rose-400 ml-1"
+                          className="hover:text-rose-400 ml-1 cursor-pointer"
                           title="Remover função"
                         >
                           <Trash2 className="w-3 h-3" />
@@ -286,7 +286,7 @@ export function Perfil() {
 
         <button
           onClick={handleSave}
-          className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] text-[#140e06] font-bold text-sm flex items-center justify-center space-x-2 hover:opacity-95 transition-opacity cursor-pointer shadow-lg"
+          className="w-full mt-5 py-2.5 rounded-xl bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] text-[#140e06] font-bold text-xs sm:text-sm flex items-center justify-center space-x-2 hover:opacity-95 transition-opacity cursor-pointer shadow-lg"
         >
           <Save className="w-4 h-4" />
           <span>Salvar Alterações</span>
