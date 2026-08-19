@@ -15,6 +15,7 @@ export interface PlantaoUser {
   status: 'Em Plantão' | 'Ativo' | 'Folga' | 'Transição';
   totalRegistros?: number;
   ultimoRegistro?: string;
+  profilePic?: string;
 }
 
 export type ItemTipo = 'resumo_turno' | 'ocorrencia' | 'pontuacao' | 'checklist' | 'acao_app';

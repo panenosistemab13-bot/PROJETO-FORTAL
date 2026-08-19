@@ -19,7 +19,7 @@ import {
   Wifi,
 } from 'lucide-react';
 import { getCurrentUser, isMasterUser, User as AuthUser } from '../lib/authStore';
-import { subscribeToConnectionStatus } from '../lib/realtimeDb';
+import { subscribeToConnectionStatus, subscribeToAuthUsers } from '../lib/realtimeDb';
 
 interface HeaderProps {
   onOpenAlerts: () => void;
@@ -51,9 +51,22 @@ export function Header({ onOpenAlerts, onOpenSafetyStatus, onLogout, onOpenPerfi
     const unsubRtdb = subscribeToConnectionStatus((connected) => {
       setIsRtdbConnected(connected);
     });
+    const unsubAuth = subscribeToAuthUsers((users) => {
+      const active = getCurrentUser();
+      if (active) {
+        const updated = users.find(u => u.id === active.id || u.login === active.login);
+        if (updated) {
+          setCurrentUser(updated);
+          localStorage.setItem('cco_user', JSON.stringify(updated));
+        } else {
+          setCurrentUser(active);
+        }
+      }
+    });
     return () => {
       window.removeEventListener('auth-user-updated', fetchUser);
       unsubRtdb();
+      unsubAuth();
     };
   }, []);
 

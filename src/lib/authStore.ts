@@ -1,3 +1,5 @@
+import { saveAuthUsersToRtdb } from './realtimeDb';
+
 export interface User {
   id: string;
   fixedName: string;
@@ -39,6 +41,9 @@ export const getAuthUsers = (): User[] => {
 
 export const saveAuthUsers = (users: User[]) => {
   localStorage.setItem('cco_auth_users', JSON.stringify(users));
+  saveAuthUsersToRtdb(users).catch((err) => {
+    console.warn('Error saving auth users to RTDB:', err);
+  });
 };
 
 export const getCurrentUser = (): User | null => {

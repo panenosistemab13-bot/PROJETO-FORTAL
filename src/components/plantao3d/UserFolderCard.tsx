@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Edit2,
   Trash2,
@@ -6,7 +6,8 @@ import {
   Unlock,
 } from 'lucide-react';
 import { PlantaoUser, PlantaoFolderItem } from '../../types/plantao3d';
-import { getCurrentUser, getAuthUsers } from '../../lib/authStore';
+import { getCurrentUser, getAuthUsers, User } from '../../lib/authStore';
+import { subscribeToAuthUsers } from '../../lib/realtimeDb';
 
 interface UserFolderCardProps {
   user: PlantaoUser;
@@ -28,7 +29,16 @@ export function UserFolderCard({
   viewStyle = '3d',
 }: UserFolderCardProps) {
   const currentUser = getCurrentUser();
-  const allAuthUsers = getAuthUsers();
+  const [allAuthUsers, setAllAuthUsers] = useState<User[]>(() => getAuthUsers());
+
+  useEffect(() => {
+    const unsub = subscribeToAuthUsers((users) => {
+      if (users && users.length > 0) {
+        setAllAuthUsers(users);
+      }
+    });
+    return () => unsub();
+  }, []);
   
   const matchedAuthUser = allAuthUsers.find(
     au => au.plantaoFolderName?.trim().toLowerCase() === user.nome.trim().toLowerCase() ||
@@ -36,7 +46,7 @@ export function UserFolderCard({
           au.login?.trim().toLowerCase() === user.nome.trim().toLowerCase()
   );
   
-  const profilePic = matchedAuthUser?.profilePic;
+  const profilePic = user.profilePic || matchedAuthUser?.profilePic;
 
   const isMaster = currentUser?.role?.toLowerCase().includes('mestre') || currentUser?.role === 'Mestre';
   const isOwner = !!currentUser && (
