@@ -64,7 +64,10 @@ export function PromoModal({ isOpen, onClose }: PromoModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-[#1f2737] bg-[#0c1017] flex justify-end">
+        <div className="p-4 border-t border-[#1f2737] bg-[#0c1017] flex items-center justify-between">
+          <span className="text-[11px] text-[#94a3b8] font-medium">
+            Criado por <strong className="text-[#dfbe85]">Jefferson augusto / 10-85447</strong>
+          </span>
           <button
             onClick={onClose}
             className="px-5 py-2 bg-[#c9a265] hover:bg-[#dfbe85] text-[#0c1017] rounded-lg font-bold uppercase tracking-wider transition-colors text-xs cursor-pointer shadow-md"

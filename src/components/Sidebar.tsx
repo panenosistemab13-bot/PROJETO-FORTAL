@@ -196,6 +196,9 @@ export function Sidebar({ activeTab, setActiveTab, onOpenPromo, isCollapsed, set
               </div>
             </div>
           </div>
+          <div className="mt-3 text-center text-[10px] text-[#94a3b8] font-medium">
+            Criado por <span className="text-[#dfbe85] font-semibold">Jefferson augusto / 10-85447</span>
+          </div>
         </div>
       )}
     </aside>
