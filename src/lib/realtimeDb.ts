@@ -173,11 +173,40 @@ export function subscribeToPlantaoItems(callback: (items: PlantaoFolderItem[]) =
   }
 }
 
+/**
+ * Recursively converts undefined values to null or deletes them
+ * to prevent Firebase RTDB "value argument contains undefined" errors.
+ */
+export function sanitizeForFirebase<T>(obj: T): T {
+  if (obj === undefined) return null as any;
+  if (obj === null) return null as any;
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeForFirebase(item)) as any;
+  }
+
+  if (typeof obj === 'object') {
+    const sanitized: any = {};
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const val = obj[key];
+        if (val !== undefined) {
+          sanitized[key] = sanitizeForFirebase(val);
+        }
+      }
+    }
+    return sanitized;
+  }
+
+  return obj;
+}
+
 export async function savePlantaoItemsToRtdb(items: PlantaoFolderItem[]): Promise<void> {
   localStorage.setItem('plantao_items_v2', JSON.stringify(items));
   try {
     const itemsRef = ref(rtdb, DB_PATHS.PLANTAO_ITEMS);
-    await set(itemsRef, items);
+    const sanitized = sanitizeForFirebase(items);
+    await set(itemsRef, sanitized);
   } catch (err) {
     console.warn('Saved plantao items locally, RTDB sync will retry when online', err);
   }
@@ -224,7 +253,8 @@ export async function saveOcorrenciasToRtdb(records: PlantaoItem[]): Promise<voi
   localStorage.setItem('plantao_records_v2', JSON.stringify(records));
   try {
     const ocorrenciasRef = ref(rtdb, DB_PATHS.OCORRENCIAS);
-    await set(ocorrenciasRef, records);
+    const sanitized = sanitizeForFirebase(records);
+    await set(ocorrenciasRef, sanitized);
   } catch (err) {
     console.warn('Saved ocorrencias locally, RTDB sync will retry when online', err);
   }
