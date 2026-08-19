@@ -36,7 +36,9 @@ import tresCoracoes360Img from '../assets/images/tres_coracoes_360_panorama_1786
 import eusebio360Img from '../assets/images/eusebio_factory_ultra_hd_360_1786943148780.jpg';
 import joaoLima360Img from '../assets/images/edificio_joao_lima_360_1786970922827.jpg';
 import medallionImg from '../assets/images/medallion_dark_3c_1786935069743.jpg';
-import { getAuthUsers, User as AuthUser } from '../lib/authStore';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { getAuthUsers, updateCurrentUserSession, User as AuthUser } from '../lib/authStore';
 
 interface Login360Props {
   onLoginSuccess: (user: AuthUser) => void;
@@ -369,38 +371,67 @@ export function Login360({ onLoginSuccess }: Login360Props) {
     setTimeout(() => setSuccessMsg(null), 3000);
   };
 
+  // Função para realizar o login com conversão interna do usuário para e-mail corporativo Firebase
+  const fazerLogin = async (usuario: string, senha: string): Promise<AuthUser> => {
+    const cleanUser = usuario.trim().toLowerCase();
+    const cleanPass = senha.trim();
+
+    // Transforma o nome de usuário em um e-mail válido para o Firebase Auth
+    const emailCorporativo = `${cleanUser}@3coracoes.com.br`;
+
+    const users = getAuthUsers();
+    const matchedUser = users.find(
+      (u) => u.login.toLowerCase() === cleanUser && u.password === cleanPass
+    );
+
+    if (!matchedUser) {
+      throw new Error('Credenciais inválidas. Verifique usuário e senha.');
+    }
+
+    // Autentica no Firebase Auth usando o e-mail corporativo gerado
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, emailCorporativo, cleanPass);
+      console.log('Login Firebase realizado com sucesso!', userCredential.user);
+    } catch (error: any) {
+      console.warn('Erro no login Firebase Auth:', error?.message);
+      // Caso o usuário ainda não exista no Firebase Auth, tenta registrar a conta corporativa
+      try {
+        const newCred = await createUserWithEmailAndPassword(auth, emailCorporativo, cleanPass);
+        console.log('Conta de e-mail corporativo registrada com sucesso no Firebase Auth!', newCred.user);
+      } catch (createErr: any) {
+        console.log('Autenticação mantida para a sessão do usuário:', createErr?.message);
+      }
+    }
+
+    updateCurrentUserSession(matchedUser);
+    return matchedUser;
+  };
+
   // Handle Login Submit
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    const cleanUser = username.trim().toLowerCase();
-    const cleanPass = password.trim();
-
-    if (!cleanUser || !cleanPass) {
+    if (!username.trim() || !password.trim()) {
       setErrorMsg('Por favor, informe o usuário e a senha de acesso.');
       return;
     }
 
     setIsLoading(true);
 
-    // Validate against user requirement (login: crisfialho, senha: 123)
-    setTimeout(() => {
-      const users = getAuthUsers();
-      const user = users.find(u => u.login.toLowerCase() === cleanUser && u.password === cleanPass);
-
-      if (user) {
-        setSuccessMsg('Acesso autorizado! Carregando CCO 3Corações...');
-        setTimeout(() => {
-          setIsLoading(false);
-          onLoginSuccess(user);
-        }, 800);
-      } else {
+    try {
+      const user = await fazerLogin(username, password);
+      const emailCorporativo = `${username.trim().toLowerCase()}@3coracoes.com.br`;
+      setSuccessMsg(`Acesso autorizado (${emailCorporativo})! Carregando CCO 3Corações...`);
+      setTimeout(() => {
         setIsLoading(false);
-        setErrorMsg('Credenciais inválidas. Verifique usuário e senha.');
-      }
-    }, 600);
+        onLoginSuccess(user);
+      }, 600);
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMsg(err.message || 'Credenciais inválidas. Verifique usuário e senha.');
+    }
   };
 
   return (
