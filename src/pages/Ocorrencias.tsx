@@ -34,6 +34,7 @@ import {
 import { PlantaoUser, PlantaoFolderItem } from '../types/plantao3d';
 import {
   subscribeToOcorrencias,
+  subscribeToPlantaoItems,
   saveOcorrenciasToRtdb,
   clearAllOcorrenciasFromRtdb,
   savePlantaoItemsToRtdb,
@@ -41,41 +42,164 @@ import {
 import { PlantaoRecordModal } from '../components/modals/PlantaoRecordModal';
 import { AddPlantaoUpdateModal } from '../components/modals/AddPlantaoUpdateModal';
 import { getCurrentUser } from '../lib/authStore';
+import { PlacaMercosul } from '../components/PlacaMercosul';
+import { INITIAL_VEHICLES_RAW } from '../data/veiculosData';
+
+const getCarrierName = (plate: string, currentCarrier?: string) => {
+  const matchedVehicle = INITIAL_VEHICLES_RAW.find(
+    (v) => v.plate.toUpperCase().trim() === plate.toUpperCase().trim()
+  );
+  if (matchedVehicle) {
+    return matchedVehicle.carrier;
+  }
+  // If the current carrier is empty or generic 'Central', fall back to 'Logística 3C'
+  if (!currentCarrier || currentCarrier === 'Central' || currentCarrier === 'CCO') {
+    return 'Logística 3C';
+  }
+  return currentCarrier;
+};
 
 export function Ocorrencias() {
-  const [records, setRecords] = useState<PlantaoItem[]>(() => {
+  const [expandedDesc, setExpandedDesc] = useState<Record<string, boolean>>({});
+  const [expandedRetorno, setExpandedRetorno] = useState<Record<string, boolean>>({});
+
+  const renderTruncatedText = (
+    text: string,
+    itemId: string,
+    isRetorno: boolean
+  ) => {
+    if (!text) return null;
+    const isLong = text.length > 75;
+    const expandedMap = isRetorno ? expandedRetorno : expandedDesc;
+    const setExpandedMap = isRetorno ? setExpandedRetorno : setExpandedDesc;
+    const isExpanded = !!expandedMap[itemId];
+
+    if (!isLong) {
+      return <p className="text-[11px] text-slate-300 mt-1 leading-relaxed text-center">{text}</p>;
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center">
+        <p className={`text-[11px] text-slate-300 mt-1 leading-relaxed text-center ${isExpanded ? '' : 'line-clamp-2'}`}>
+          {text}
+        </p>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpandedMap(prev => ({ ...prev, [itemId]: !isExpanded }));
+          }}
+          className="text-[10px] text-[#dfbe85] hover:text-[#c9a265] font-extrabold mt-1 transition-colors cursor-pointer inline-flex items-center"
+        >
+          {isExpanded ? 'Ver menos' : 'Ver +'}
+        </button>
+      </div>
+    );
+  };
+
+  const [rtdbRecords, setRtdbRecords] = useState<PlantaoItem[]>(() => {
     const saved = localStorage.getItem('plantao_records_v2');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          // Clean legacy test mock items if present
           return parsed.filter((item: PlantaoItem) => !item.id.startsWith('plantao-'));
         }
       } catch (e) {
         console.error('Error loading saved plantao records:', e);
       }
     }
-    return INITIAL_PLANTAO_ITEMS;
+    return [];
+  });
+
+  const [rtdbFolderItems, setRtdbFolderItems] = useState<PlantaoFolderItem[]>(() => {
+    const saved = localStorage.getItem('plantao_items_v2');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error('Error loading saved plantao items:', e);
+      }
+    }
+    return [];
   });
 
   // Subscribe to Firebase Realtime Database
   useEffect(() => {
-    const unsubscribe = subscribeToOcorrencias((rtdbRecords) => {
-      if (rtdbRecords) {
-        // Purge test records if any legacy data exists
-        const cleaned = rtdbRecords.filter((item) => !item.id.startsWith('plantao-'));
-        if (cleaned.length !== rtdbRecords.length) {
-          saveRecords(cleaned);
-        } else {
-          setRecords(cleaned);
-        }
+    const unsubscribeRecords = subscribeToOcorrencias((recordsList) => {
+      if (recordsList) {
+        const cleaned = recordsList.filter((item) => !item.id.startsWith('plantao-'));
+        setRtdbRecords(cleaned);
       } else {
-        setRecords([]);
+        setRtdbRecords([]);
       }
     });
-    return () => unsubscribe();
+
+    const unsubscribeFolderItems = subscribeToPlantaoItems((itemsList) => {
+      if (itemsList) {
+        setRtdbFolderItems(itemsList);
+      } else {
+        setRtdbFolderItems([]);
+      }
+    });
+
+    return () => {
+      unsubscribeRecords();
+      unsubscribeFolderItems();
+    };
   }, []);
+
+  // Dynamically merge standard occurrences and occurrences created inside any user folders
+  const records = useMemo(() => {
+    const result = [...rtdbRecords];
+
+    const folderConverted = rtdbFolderItems
+      .filter((fi) => fi.tipo === 'ocorrencia')
+      .map((fi) => {
+        const recordId = fi.id.startsWith('item-from-ocorrencia-')
+          ? fi.id.replace('item-from-ocorrencia-', '')
+          : fi.id;
+
+        let status: PlantaoStatus = 'acompanhar';
+        if (fi.statusOcorrencia) {
+          status = fi.statusOcorrencia as PlantaoStatus;
+        } else {
+          if (fi.statusAcompanhamento === 'concluido') status = 'resolvido';
+          else if (fi.statusAcompanhamento === 'informativo') status = 'para conhecimento';
+          else if (fi.statusAcompanhamento === 'pendente_proximo_turno') status = 'atenção';
+        }
+
+        return {
+          id: recordId,
+          dataRegistro: fi.data,
+          horaRegistro: fi.hora,
+          turno: 'Central',
+          operador: fi.userName || 'Operador',
+          observacao: fi.descricao || '',
+          unidadeTransportadora: 'Central',
+          placa: fi.veiculoPlaca || '-',
+          operacao: (fi.tags && fi.tags[0] as PlantaoOperacao) || 'transferencia',
+          eventualidade: fi.titulo || 'Ocorrência',
+          descricaoOcorrencia: fi.descricao || '',
+          status: status,
+          atualizacao: {
+            descricaoRetorno: '',
+          }
+        } as PlantaoItem;
+      });
+
+    // Merge non-duplicate entries from user folders
+    for (const convertedItem of folderConverted) {
+      if (!result.some((r) => r.id === convertedItem.id)) {
+        result.push(convertedItem);
+      }
+    }
+
+    return result;
+  }, [rtdbRecords, rtdbFolderItems]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<PlantaoStatus | 'all'>('all');
@@ -96,7 +220,6 @@ export function Ocorrencias() {
 
   // Sync to Firebase RTDB & local storage
   const saveRecords = (newRecords: PlantaoItem[]) => {
-    setRecords(newRecords);
     saveOcorrenciasToRtdb(newRecords);
   };
 
@@ -179,6 +302,7 @@ export function Ocorrencias() {
             veiculoPlaca: savedRecord.placa || undefined,
             statusAcompanhamento: 'acompanhar',
             statusOcorrencia: savedRecord.status,
+            tags: [savedRecord.operacao || 'transferencia'],
             createdAt: Date.now(),
           };
 
@@ -289,7 +413,7 @@ export function Ocorrencias() {
                 ...existingHistorico,
                 {
                   dataHora: nowStr,
-                  operador: getCurrentUser()?.fixedName || 'Operador CCO',
+                  operador: getCurrentUser()?.fixedName || 'Operador Central',
                   texto: updateData.novoTexto,
                 },
               ],
@@ -342,7 +466,7 @@ export function Ocorrencias() {
                 Ocorrências
               </h1>
               <span className="px-2.5 py-0.5 rounded-full bg-[#c9a265]/20 border border-[#c9a265]/40 text-[#dfbe85] text-[10.5px] font-bold font-mono uppercase tracking-wider">
-                CCO 24H
+                Central 24H
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-0.5 font-medium">
@@ -388,14 +512,6 @@ export function Ocorrencias() {
               <span className="hidden sm:inline">Limpar Registros</span>
             </button>
           )}
-
-          <button
-            onClick={handlePrint}
-            className="px-3.5 py-2 rounded-xl bg-[#151c28] border border-[#26354d] hover:border-[#c9a265] text-slate-300 hover:text-white text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5 text-[#dfbe85]" />
-            <span className="hidden sm:inline">Imprimir</span>
-          </button>
 
           {currentUserObj && (
             <button
@@ -454,7 +570,7 @@ export function Ocorrencias() {
               <option value="resolvido">Resolvido</option>
               <option value="para conhecimento">Para Conhecimento</option>
               <option value="atenção">Atenção</option>
-              <option value="registro grid">Registro Grid</option>
+              <option value="registro grid">Registrado no Grid</option>
             </select>
           </div>
 
@@ -480,13 +596,13 @@ export function Ocorrencias() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-[#121927] border-b border-[#232f45] text-[11px] uppercase tracking-wider text-slate-400 font-bold">
-                  <th className="py-3.5 px-4">Data / Hora / Turno</th>
-                  <th className="py-3.5 px-4">Operador CCO</th>
-                  <th className="py-3.5 px-4">Operação</th>
-                  <th className="py-3.5 px-4">Transportadora & Placa</th>
-                  <th className="py-3.5 px-4">Eventualidade / Ocorrência</th>
-                  <th className="py-3.5 px-4">Atualização & Retorno</th>
-                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4 text-center">REGISTRO</th>
+                  <th className="py-3.5 px-4 text-center">Operador</th>
+                  <th className="py-3.5 px-4 text-center">Operação</th>
+                  <th className="py-3.5 px-4 text-center">PLACA / TRANSPORTADORA</th>
+                  <th className="py-3.5 px-4 text-center">Eventualidade / Ocorrência</th>
+                  <th className="py-3.5 px-4 text-center">Atualização & Retorno</th>
+                  <th className="py-3.5 px-4 text-center">Status</th>
                   <th className="py-3.5 px-4 text-right">Ações</th>
                 </tr>
               </thead>
@@ -533,95 +649,105 @@ export function Ocorrencias() {
                       >
                         {/* Data / Hora / Turno */}
                         <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                          <div className="flex items-center space-x-1.5 text-white font-mono font-bold text-xs">
-                            <Clock className="w-3 h-3 text-[#dfbe85]" />
-                            <span>{item.dataRegistro}</span>
-                            <span className="text-[#dfbe85]">{item.horaRegistro}</span>
-                          </div>
-                          <div className="text-[10.5px] text-slate-400 mt-0.5">
-                            {item.turno}
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="flex items-center space-x-1.5 text-white font-mono font-bold text-xs justify-center">
+                              <Clock className="w-3 h-3 text-[#dfbe85]" />
+                              <span>{item.dataRegistro}</span>
+                              <span className="text-[#dfbe85]">{item.horaRegistro}</span>
+                            </div>
+                            <div className="text-[10.5px] text-slate-400 mt-0.5 text-center">
+                              {item.turno}
+                            </div>
                           </div>
                         </td>
 
                         {/* Operador CCO */}
                         <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                          <div className="flex items-center space-x-1.5 text-slate-200 font-medium">
-                            <User className="w-3.5 h-3.5 text-[#c9a265]" />
-                            <span className="font-semibold">{item.operador}</span>
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="flex items-center space-x-1.5 text-slate-200 font-medium justify-center">
+                              <User className="w-3.5 h-3.5 text-[#c9a265]" />
+                              <span className="font-semibold text-[13px]">{item.operador}</span>
+                            </div>
                           </div>
                         </td>
 
                         {/* Operação */}
-                        <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                          {opCfg ? (
-                            <span
-                              className={`px-2.5 py-1 rounded-lg text-[10.5px] font-extrabold uppercase tracking-wider border ${opCfg.badgeBg} ${opCfg.badgeText} ${opCfg.badgeBorder}`}
-                            >
-                              {opCfg.label}
-                            </span>
-                          ) : (
-                            <span className="text-slate-500 text-xs">-</span>
-                          )}
+                        <td className="py-3.5 px-4 align-top whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center">
+                            {opCfg ? (
+                              <span
+                                className={`px-2.5 py-1 rounded-lg text-[10.5px] font-extrabold uppercase tracking-wider border ${opCfg.badgeBg} ${opCfg.badgeText} ${opCfg.badgeBorder}`}
+                              >
+                                {opCfg.label}
+                              </span>
+                            ) : (
+                              <span className="text-slate-500 text-xs">-</span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Transportadora & Placa */}
                         <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                          <div className="flex items-center space-x-1.5 font-mono font-bold text-white text-xs">
-                            <Truck className="w-3.5 h-3.5 text-[#c9a265]" />
-                            <span>{item.placa}</span>
-                          </div>
-                          <div className="text-[11px] text-slate-400 mt-0.5 font-medium">
-                            {item.unidadeTransportadora}
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="flex items-center justify-center">
+                              <PlacaMercosul placa={item.placa} />
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-1.5 font-semibold text-center">
+                              {getCarrierName(item.placa, item.unidadeTransportadora)}
+                            </div>
                           </div>
                         </td>
 
                         {/* Eventualidade & Descrição */}
-                        <td className="py-3.5 px-4 align-top max-w-xs">
-                          <div className="font-bold text-white text-xs">
-                            {item.eventualidade}
+                        <td className="py-3.5 px-4 align-top max-w-xs text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="font-bold text-white text-xs text-center">
+                              {item.eventualidade}
+                            </div>
+                            {renderTruncatedText(item.descricaoOcorrencia, item.id, false)}
                           </div>
-                          <p className="text-[11px] text-slate-300 mt-1 line-clamp-2 leading-relaxed">
-                            {item.descricaoOcorrencia}
-                          </p>
                         </td>
 
                         {/* Atualização & Retorno */}
-                        <td className="py-3.5 px-4 align-top max-w-xs">
-                          {item.atualizacao?.temSubstituicao && (
-                            <div className="text-[10px] text-amber-300 font-bold mb-1 flex items-center space-x-1">
-                              <span>Placa Sub: {item.atualizacao.placaSubstituta}</span>
-                            </div>
-                          )}
-                          <p className="text-[11px] text-slate-300 line-clamp-2 leading-relaxed">
-                            {item.atualizacao?.descricaoRetorno || 'Sem retorno registrado.'}
-                          </p>
+                        <td className="py-3.5 px-4 align-top max-w-xs text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            {item.atualizacao?.temSubstituicao && item.atualizacao.placaSubstituta && (
+                              <div className="mb-2 flex flex-col items-center space-y-1">
+                                <span className="text-[10px] text-amber-300 font-extrabold uppercase">Placa Sub:</span>
+                                <PlacaMercosul placa={item.atualizacao.placaSubstituta} />
+                              </div>
+                            )}
+                            {renderTruncatedText(item.atualizacao?.descricaoRetorno || 'Sem retorno registrado.', item.id, true)}
+                          </div>
                         </td>
 
                         {/* Status */}
-                        <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                          {currentUserObj ? (
-                            <div className="relative inline-block">
-                              <select
-                                value={item.status}
-                                onChange={(e) => handleStatusChange(item.id, e.target.value as PlantaoStatus)}
-                                className={`appearance-none pl-3 pr-7 py-1 rounded-full text-[10.5px] font-bold uppercase tracking-wider border outline-none cursor-pointer transition-all ${statusCfg.badgeBg} ${statusCfg.badgeText} ${statusCfg.badgeBorder} focus:ring-1 focus:ring-[#c9a265]`}
+                        <td className="py-3.5 px-4 align-top whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center">
+                            {currentUserObj ? (
+                              <div className="relative inline-block">
+                                <select
+                                  value={item.status}
+                                  onChange={(e) => handleStatusChange(item.id, e.target.value as PlantaoStatus)}
+                                  className={`appearance-none pl-3 pr-7 py-1 rounded-full text-[10.5px] font-bold uppercase tracking-wider border outline-none cursor-pointer transition-all ${statusCfg.badgeBg} ${statusCfg.badgeText} ${statusCfg.badgeBorder} focus:ring-1 focus:ring-[#c9a265] text-center`}
+                                >
+                                  <option value="acompanhar" className="bg-[#0f141d] text-blue-400">Acompanhar</option>
+                                  <option value="resolvido" className="bg-[#0f141d] text-emerald-400">Resolvido</option>
+                                  <option value="para conhecimento" className="bg-[#0f141d] text-slate-300">Para Conhecimento</option>
+                                  <option value="atenção" className="bg-[#0f141d] text-amber-400">Atenção</option>
+                                  <option value="registro grid" className="bg-[#0f141d] text-purple-300">Registrado no Grid</option>
+                                </select>
+                                <ChevronDown className="w-3.5 h-3.5 text-[#c9a265] absolute right-2 top-2 pointer-events-none" />
+                              </div>
+                            ) : (
+                              <span
+                                className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold uppercase tracking-wider border ${statusCfg.badgeBg} ${statusCfg.badgeText} ${statusCfg.badgeBorder}`}
                               >
-                                <option value="acompanhar" className="bg-[#0f141d] text-blue-400">Acompanhar</option>
-                                <option value="resolvido" className="bg-[#0f141d] text-emerald-400">Resolvido</option>
-                                <option value="para conhecimento" className="bg-[#0f141d] text-slate-300">Para Conhecimento</option>
-                                <option value="atenção" className="bg-[#0f141d] text-amber-400">Atenção</option>
-                                <option value="registro grid" className="bg-[#0f141d] text-purple-300">Registro Grid</option>
-                              </select>
-                              <ChevronDown className="w-3.5 h-3.5 text-[#c9a265] absolute right-2 top-2 pointer-events-none" />
-                            </div>
-                          ) : (
-                            <span
-                              className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold uppercase tracking-wider border ${statusCfg.badgeBg} ${statusCfg.badgeText} ${statusCfg.badgeBorder}`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dotColor}`} />
-                              <span>{statusCfg.label}</span>
-                            </span>
-                          )}
+                                <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dotColor}`} />
+                                <span>{statusCfg.label}</span>
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Ações */}
@@ -727,7 +853,7 @@ export function Ocorrencias() {
                           <option value="resolvido" className="bg-[#0f141d] text-emerald-400">Resolvido</option>
                           <option value="para conhecimento" className="bg-[#0f141d] text-slate-300">Para Conhecimento</option>
                           <option value="atenção" className="bg-[#0f141d] text-amber-400">Atenção</option>
-                          <option value="registro grid" className="bg-[#0f141d] text-purple-300">Registro Grid</option>
+                          <option value="registro grid" className="bg-[#0f141d] text-purple-300">Registrado no Grid</option>
                         </select>
                         <ChevronDown className="w-3 h-3 text-[#c9a265] absolute right-1.5 top-1.5 pointer-events-none" />
                       </div>
@@ -742,9 +868,8 @@ export function Ocorrencias() {
 
                   {/* Operação & Placa */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2 font-mono font-bold text-white text-sm">
-                      <Truck className="w-4 h-4 text-[#c9a265]" />
-                      <span>{item.placa}</span>
+                    <div>
+                      <PlacaMercosul placa={item.placa} />
                     </div>
                     {opCfg && (
                       <span
@@ -757,7 +882,7 @@ export function Ocorrencias() {
 
                   {/* Transportadora & Operador */}
                   <div className="text-xs text-slate-300 flex items-center justify-between">
-                    <span>{item.unidadeTransportadora}</span>
+                    <span className="font-semibold">{getCarrierName(item.placa, item.unidadeTransportadora)}</span>
                     <span className="text-slate-400 font-medium">Por: {item.operador}</span>
                   </div>
 

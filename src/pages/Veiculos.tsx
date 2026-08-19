@@ -24,9 +24,9 @@ import {
 } from 'lucide-react';
 import bgVeiculos from '../assets/images/eusebio_factory_ultra_hd_360_1786943148780.jpg';
 import { ThreePanorama } from '../components/ThreePanorama';
-import { LateralGoldScrollbar } from '../components/LateralGoldScrollbar';
 import { getInitialVehicles, VehicleItem } from '../data/veiculosData';
 import { getCurrentUser } from '../lib/authStore';
+import { PlacaMercosul } from '../components/PlacaMercosul';
 
 export function Veiculos() {
   const [vehicles, setVehicles] = useState<VehicleItem[]>(() => getInitialVehicles());
@@ -285,8 +285,6 @@ export function Veiculos() {
 
   return (
     <div className="max-w-[2560px] mx-auto flex flex-col gap-6 relative z-10 select-none pb-16">
-      {/* Lateral Golden Scrollbar matching the reference image */}
-      <LateralGoldScrollbar />
 
       {/* 3D 360-Degree Panoramic Interactive Background */}
       <ThreePanorama imageUrl={bgVeiculos} interactive={hideContent} />
@@ -394,130 +392,122 @@ export function Veiculos() {
         <div className="lg:col-span-7 bg-[#0c1017]/90 backdrop-blur-xl rounded-2xl border border-[#c9a265]/40 p-5 sm:p-6 shadow-2xl flex flex-col justify-between relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-[#c9a265]/5 rounded-full blur-3xl pointer-events-none" />
 
-          {isMaster ? (
-            <div>
-              <div className="flex items-center justify-between mb-5 pb-3 border-b border-white/10">
-                <div className="flex items-center space-x-3">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#dfbe85] to-[#a37c3f] flex items-center justify-center shadow-lg shadow-[#c9a265]/20">
-                    <Truck className="w-4 h-4 text-[#0c1017]" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg 2xl:text-xl font-serif font-bold text-white tracking-wide">
-                      {editingVehicleId ? 'Editar Veículo Cadastrado' : 'Cadastrar Novo Veículo na Frota'}
-                    </h2>
-                    <p className="text-xs text-slate-300">
-                      {editingVehicleId ? 'Modifique a placa, frota ou transportadora associada' : 'Adicione novas placas ao sistema com identificação automática de frota 3C'}
-                    </p>
-                  </div>
+          {/* Form Container */}
+          <div>
+            <div className="flex items-center justify-between mb-5 pb-3 border-b border-white/10">
+              <div className="flex items-center space-x-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#dfbe85] to-[#a37c3f] flex items-center justify-center shadow-lg shadow-[#c9a265]/20">
+                  <Truck className="w-4 h-4 text-[#0c1017]" />
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-black/40 border border-[#c9a265]/60 text-[#dfbe85]">
-                  {editingVehicleId ? 'Modo Edição' : 'Operacional'}
-                </span>
+                <div>
+                  <h2 className="text-lg 2xl:text-xl font-serif font-bold text-white tracking-wide">
+                    {editingVehicleId ? 'Editar Veículo Cadastrado' : 'Cadastrar Novo Veículo na Frota'}
+                  </h2>
+                  <p className="text-xs text-slate-300">
+                    {editingVehicleId ? 'Modifique a placa, frota ou transportadora associada' : 'Adicione novas placas ao sistema com identificação automática de frota 3C'}
+                  </p>
+                </div>
               </div>
-              
-              <form onSubmit={handleAddVehicle} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-200 mb-1.5 uppercase tracking-wider flex items-center space-x-1.5">
-                      <Hash className="w-3.5 h-3.5 text-[#c9a265]" />
-                      <span>Placa do Veículo</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={plateInput}
-                      onChange={(e) => setPlateInput(e.target.value.toUpperCase())}
-                      placeholder="EX: SBN5A55"
-                      maxLength={8}
-                      className="w-full bg-[#121722] border border-[#2d3748] focus:border-[#c9a265] rounded-xl px-3.5 py-2.5 text-white font-mono text-sm font-bold tracking-wider placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#c9a265] transition-all"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-200 mb-1.5 uppercase tracking-wider flex items-center space-x-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-[#c9a265]" />
-                      <span>Frota / Cidade</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={fleetInput}
-                      onChange={(e) => setFleetInput(e.target.value.toUpperCase())}
-                      placeholder="EX: EUSEBIO, BELEM..."
-                      className="w-full bg-[#121722] border border-[#2d3748] focus:border-[#c9a265] rounded-xl px-3.5 py-2.5 text-white text-sm font-semibold placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#c9a265] transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-200 mb-1.5 uppercase tracking-wider flex items-center space-x-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-[#c9a265]" />
-                      <span>Transportadora</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={carrierInput}
-                      onChange={(e) => setCarrierInput(e.target.value)}
-                      placeholder="EX: 3C EUSEBIO, ARGUS..."
-                      className="w-full bg-[#121722] border border-[#2d3748] focus:border-[#c9a265] rounded-xl px-3.5 py-2.5 text-white text-sm font-semibold placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#c9a265] transition-all"
-                      required
-                    />
-                  </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-black/40 border border-[#c9a265]/60 text-[#dfbe85]">
+                {editingVehicleId ? 'Modo Edição' : 'Operacional'}
+              </span>
+            </div>
+            
+            <form onSubmit={handleAddVehicle} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-200 mb-1.5 uppercase tracking-wider flex items-center space-x-1.5">
+                    <Hash className="w-3.5 h-3.5 text-[#c9a265]" />
+                    <span>Placa do Veículo</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={plateInput}
+                    onChange={(e) => setPlateInput(e.target.value.toUpperCase())}
+                    placeholder="EX: SBN5A55"
+                    maxLength={8}
+                    className="w-full bg-[#121722] border border-[#2d3748] focus:border-[#c9a265] rounded-xl px-3.5 py-2.5 text-white font-mono text-sm font-bold tracking-wider placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#c9a265] transition-all"
+                    required
+                  />
                 </div>
 
-                {/* Status and Action Buttons */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <span className="text-xs font-bold text-slate-300 whitespace-nowrap">Status:</span>
-                    <select
-                      value={statusInput}
-                      onChange={(e) => setStatusInput(e.target.value as VehicleItem['status'])}
-                      className="bg-[#121722] border border-[#2d3748] rounded-xl px-3 py-2 text-xs font-bold text-slate-200 focus:outline-none focus:border-[#c9a265]"
-                    >
-                      <option value="No Pátio">No Pátio</option>
-                      <option value="Em Trânsito">Em Trânsito</option>
-                      <option value="Carregando">Carregando</option>
-                      <option value="Manutenção">Manutenção</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-200 mb-1.5 uppercase tracking-wider flex items-center space-x-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#c9a265]" />
+                    <span>Frota / Cidade</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={fleetInput}
+                    onChange={(e) => setFleetInput(e.target.value.toUpperCase())}
+                    placeholder="EX: EUSEBIO, BELEM..."
+                    className="w-full bg-[#121722] border border-[#2d3748] focus:border-[#c9a265] rounded-xl px-3.5 py-2.5 text-white text-sm font-semibold placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#c9a265] transition-all"
+                  />
+                </div>
 
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    {editingVehicleId ? (
-                      <>
-                        <button
-                          type="submit"
-                          className="flex-1 sm:flex-initial bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] hover:brightness-110 active:scale-[0.99] text-[#0f0b04] font-extrabold px-5 py-2.5 rounded-xl shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer text-xs uppercase tracking-wider"
-                        >
-                          <span>Salvar Alterações</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleCancelEdit}
-                          className="bg-white/10 hover:bg-white/20 active:scale-[0.99] text-white font-bold px-4 py-2.5 rounded-xl border border-white/10 transition-all flex items-center justify-center space-x-2 cursor-pointer text-xs uppercase tracking-wider"
-                        >
-                          <X className="w-4 h-4 text-rose-400" />
-                          <span>Cancelar</span>
-                        </button>
-                      </>
-                    ) : (
+                <div>
+                  <label className="block text-xs font-bold text-slate-200 mb-1.5 uppercase tracking-wider flex items-center space-x-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-[#c9a265]" />
+                    <span>Transportadora</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={carrierInput}
+                    onChange={(e) => setCarrierInput(e.target.value)}
+                    placeholder="EX: 3C EUSEBIO, ARGUS..."
+                    className="w-full bg-[#121722] border border-[#2d3748] focus:border-[#c9a265] rounded-xl px-3.5 py-2.5 text-white text-sm font-semibold placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#c9a265] transition-all"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Status and Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <span className="text-xs font-bold text-slate-300 whitespace-nowrap">Status:</span>
+                  <select
+                    value={statusInput}
+                    onChange={(e) => setStatusInput(e.target.value as VehicleItem['status'])}
+                    className="bg-[#121722] border border-[#2d3748] rounded-xl px-3 py-2 text-xs font-bold text-slate-200 focus:outline-none focus:border-[#c9a265]"
+                  >
+                    <option value="No Pátio">No Pátio</option>
+                    <option value="Em Trânsito">Em Trânsito</option>
+                    <option value="Carregando">Carregando</option>
+                    <option value="Manutenção">Manutenção</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {editingVehicleId ? (
+                    <>
                       <button
                         type="submit"
-                        className="w-full sm:w-auto bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] hover:brightness-110 active:scale-[0.99] text-[#0f0b04] font-extrabold px-6 py-2.5 rounded-xl shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer text-xs uppercase tracking-wider"
+                        className="flex-1 sm:flex-initial bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] hover:brightness-110 active:scale-[0.99] text-[#0f0b04] font-extrabold px-5 py-2.5 rounded-xl shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer text-xs uppercase tracking-wider"
                       >
-                        <Plus className="w-4 h-4 stroke-[2.5]" />
-                        <span>Cadastrar Veículo</span>
+                        <span>Salvar Alterações</span>
                       </button>
-                    )}
-                  </div>
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="bg-white/10 hover:bg-white/20 active:scale-[0.99] text-white font-bold px-4 py-2.5 rounded-xl border border-white/10 transition-all flex items-center justify-center space-x-2 cursor-pointer text-xs uppercase tracking-wider"
+                      >
+                        <X className="w-4 h-4 text-rose-400" />
+                        <span>Cancelar</span>
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="submit"
+                      className="w-full sm:w-auto bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] hover:brightness-110 active:scale-[0.99] text-[#0f0b04] font-extrabold px-6 py-2.5 rounded-xl shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer text-xs uppercase tracking-wider"
+                    >
+                      <Plus className="w-4 h-4 stroke-[2.5]" />
+                      <span>Cadastrar Veículo</span>
+                    </button>
+                  )}
                 </div>
-              </form>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full space-y-3 opacity-60">
-              <ShieldCheck className="w-12 h-12 text-[#c9a265]" />
-              <p className="text-sm font-bold text-slate-300 text-center max-w-sm">
-                Somente o usuário Mestre tem permissão para cadastrar ou editar veículos nesta página.
-              </p>
-            </div>
-          )}
+              </div>
+            </form>
+          </div>
         </div>
 
         {/* ECharts Visual Distribution (5 cols on lg) */}
@@ -713,8 +703,8 @@ export function Veiculos() {
                     >
                       {/* Placa Badge */}
                       <td className="py-3 px-4">
-                        <div className="inline-flex items-center px-3 py-1.5 rounded-xl bg-[#121722] border border-[#2d3748] text-white font-mono text-sm font-black shadow-md tracking-wider group-hover:border-[#c9a265] group-hover:text-[#dfbe85] transition-all">
-                          {vehicle.plate}
+                        <div className="inline-flex items-center">
+                          <PlacaMercosul placa={vehicle.plate} />
                         </div>
                       </td>
 
@@ -776,24 +766,22 @@ export function Veiculos() {
 
                       {/* Ações */}
                       <td className="py-3 px-4 text-right">
-                        {isMaster && (
-                          <div className="inline-flex items-center space-x-1.5">
-                            <button
-                              onClick={() => handleEditVehicle(vehicle)}
-                              title="Editar Veículo"
-                              className="p-1.5 rounded-lg bg-[#121722] hover:bg-[#c9a265]/20 border border-[#2d3748] hover:border-[#c9a265] text-slate-300 hover:text-[#dfbe85] transition-all cursor-pointer active:scale-90"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteVehicle(vehicle.id)}
-                              title="Remover Veículo"
-                              className="p-1.5 rounded-lg bg-[#121722] hover:bg-rose-500/20 border border-[#2d3748] hover:border-rose-500 text-slate-300 hover:text-rose-300 transition-all cursor-pointer active:scale-90"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
+                        <div className="inline-flex items-center space-x-1.5">
+                          <button
+                            onClick={() => handleEditVehicle(vehicle)}
+                            title="Editar Veículo"
+                            className="p-1.5 rounded-lg bg-[#121722] hover:bg-[#c9a265]/20 border border-[#2d3748] hover:border-[#c9a265] text-slate-300 hover:text-[#dfbe85] transition-all cursor-pointer active:scale-90"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteVehicle(vehicle.id)}
+                            title="Remover Veículo"
+                            className="p-1.5 rounded-lg bg-[#121722] hover:bg-rose-500/20 border border-[#2d3748] hover:border-rose-500 text-slate-300 hover:text-rose-300 transition-all cursor-pointer active:scale-90"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

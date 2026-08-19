@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Search, Truck, X, ChevronDown, Check, Building2, MapPin } from 'lucide-react';
 import { INITIAL_VEHICLES_RAW } from '../data/veiculosData';
+import { PlacaMercosul } from './PlacaMercosul';
 
 interface VehiclePlateSelectProps {
   value: string;
@@ -155,9 +156,7 @@ export function VehiclePlateSelect({
                   >
                     <div className="flex items-center space-x-2.5 min-w-0">
                       {/* Plate Badge */}
-                      <span className="px-2 py-0.5 rounded-md bg-[#192233] border border-[#2f3d54] text-[#dfbe85] font-mono font-bold text-xs tracking-wider group-hover:border-[#c9a265] group-hover:text-white transition-colors">
-                        {v.plate}
-                      </span>
+                      <PlacaMercosul placa={v.plate} />
 
                       {/* Carrier & Fleet details */}
                       <div className="flex flex-col min-w-0">

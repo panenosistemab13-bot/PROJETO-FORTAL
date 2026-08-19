@@ -38,7 +38,7 @@ export function NewIncidentModal({ isOpen, onClose, onSuccess }: NewIncidentModa
       setIsSubmitting(false);
       onSuccess?.(formData);
       onClose();
-      alert('Incidente registrado com sucesso no CCO Central!');
+      alert('Incidente registrado com sucesso no Sistema Central!');
     }, 600);
   };
 

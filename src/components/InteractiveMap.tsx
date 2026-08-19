@@ -4,6 +4,7 @@ import {
   ZoomOut,
   RotateCcw,
   X,
+  Sparkles,
 } from 'lucide-react';
 import mapBg from '../assets/images/fortaleza_beiramar_sunset_1786933488857.jpg';
 
@@ -21,64 +22,124 @@ interface UnitPin {
   lastUpdate: string;
 }
 
+const PHRASES_MAP: Record<string, string[]> = {
+  matriz: [
+    "A segurança de cada colaborador é o nosso bem mais precioso e inegociável.",
+    "Vigilância atenta e prevenção constante garantem a tranquilidade de todas as operações.",
+    "Proteger nossas pessoas, patrimônio e processos com excelência e rigor operacional.",
+    "Segurança não acontece por acaso: é fruto de disciplina, zelo e compromisso diário.",
+    "Ambiente seguro é a base sólida onde a inovação e o crescimento acontecem.",
+    "Atenção total aos detalhes e conformidade com os mais altos padrões de proteção.",
+    "Cuidar uns dos outros é o valor fundamental que fortalece nossa rede de proteção.",
+    "Tecnologia avançada e presença estratégica garantem resposta rápida a qualquer eventualidade.",
+    "Padrão de excelência em gestão de riscos e monitoramento em tempo real.",
+    "Compromisso inabalável com a integridade e bem-estar de toda a nossa equipe.",
+    "Nossa meta é zero acidentes, mantendo a proteção ativa em todos os postos de trabalho.",
+    "A prevenção atenta é a chave para a paz de espírito de todos os colaboradores."
+  ],
+  'praia-iracema': [
+    "O crescimento sustentável e a prosperidade são frutos de um trabalho em equipe apaixonado.",
+    "Expandindo horizontes com inovação, dedicação e busca contínua pela excelência.",
+    "Multiplicando valores, gerando oportunidades e construindo um futuro promissor para todos.",
+    "A verdadeira prosperidade nasce do compromisso com a qualidade em cada detalhe.",
+    "Superando metas com visão estratégica, ética e determinação inabalável.",
+    "Construindo parcerias duradouras e colhendo os frutos da dedicação diária.",
+    "Cada conquista é um degrau para novas oportunidades de crescimento e liderança.",
+    "Prosperar é criar valor real para nossos colaboradores, clientes e para a sociedade.",
+    "Inovação contínua impulsionando novos patamares de sucesso e eficiência.",
+    "A força da nossa união é a chave para o progresso contínuo e sustentável.",
+    "Prosperidade com responsabilidade social e ambiental é o nosso compromisso diário.",
+    "Trabalho focado e paixão geram frutos extraordinários e resultados duradouros."
+  ],
+  eusebio: [
+    "Cuidar da saúde física e mental de nossa equipe é nossa maior prioridade diária.",
+    "Bem-estar, energia e equilíbrio são os pilares para uma vida plena e produtiva.",
+    "Promovendo hábitos saudáveis e um ambiente de trabalho harmonioso e seguro.",
+    "A vitalidade de cada colaborador é o motor que impulsiona nossas conquistas.",
+    "Saúde em primeiro lugar: incentivo contínuo ao cuidado, prevenção e qualidade de vida.",
+    "Corpo são e mente sã: a combinação perfeita para realizar grandes conquistas.",
+    "Ambiente de trabalho acolhedor que apoia o desenvolvimento integral de cada pessoa.",
+    "Pausas ativas, ergonomia e equilíbrio entre vida pessoal e profissional.",
+    "Incentivando o autocuidado e a prevenção diária em todas as nossas unidades.",
+    "Uma equipe saudável constrói um futuro forte, resiliente e inspirador.",
+    "Incentivando o esporte, a alimentação consciente e a saúde emocional em primeiro lugar.",
+    "Cuidar de você é cuidar do coração da nossa empresa."
+  ],
+  'porto-mucuripe': [
+    "Movidos pela paixão de proporcionar momentos únicos com o sabor inconfundível do café.",
+    "Tradição, inovação e o coração pulsando em cada grão e em cada conquista.",
+    "3corações: Unindo pessoas, histórias e sabores que aquecem o cotidiano de milhões.",
+    "Orgulho de pertencer a uma história construída com afeto, qualidade e dedicação.",
+    "Paixão pelo que fazemos: do cafezal até a xícara de cada brasileiro.",
+    "A força da marca líder impulsionada pelo talento e pela energia da nossa gente.",
+    "Qualidade inegociável, sabor incomparável e compromisso com a nossa comunidade.",
+    "Celebrando conexões autênticas e momentos especiais ao redor de uma boa xícara.",
+    "Três corações batendo no mesmo ritmo: inovação, integridade e paixão.",
+    "Liderança com alma, responsabilidade social e dedicação plena a cada cliente.",
+    "O aroma do sucesso é feito da união de corações que trabalham com amor.",
+    "Levar o melhor do café do Brasil para o mundo é o nosso maior motivo de orgulho."
+  ]
+};
+
 const INITIAL_PINS: UnitPin[] = [
   {
     id: 'matriz',
-    name: 'Sede Três Corações - Matriz',
+    name: 'SEGURANÇA',
     type: 'unit',
     location: 'Aldeota / Beira Mar, Fortaleza - CE',
     coords: { x: 28, y: 56 },
     status: 'normal',
-    statusLabel: 'Seguro & Operacional',
-    description: 'Centro de Comando e Diretoria Geral. Todos os sistemas 100% integrados.',
+    statusLabel: 'Segurança & Proteção Ativa',
+    description: 'A segurança de cada colaborador é o nosso bem mais precioso e inegociável.',
     officers: 6,
     camerasCount: 24,
-    lastUpdate: 'Há 2 min',
+    lastUpdate: 'Em Tempo Real',
   },
   {
     id: 'praia-iracema',
-    name: 'CD Três Corações - Praia de Iracema',
+    name: 'PROSPERIDADE',
     type: 'unit',
     location: 'Praia de Iracema, Fortaleza - CE',
     coords: { x: 44, y: 48 },
     status: 'normal',
-    statusLabel: 'Seguro & Operacional',
-    description: 'Centro de Distribuição regional e armazém avançado. Posto de guarda ativo.',
+    statusLabel: 'Prosperidade & Crescimento',
+    description: 'O crescimento sustentável e a prosperidade são frutos de um trabalho em equipe apaixonado.',
     officers: 4,
     camerasCount: 16,
-    lastUpdate: 'Há 5 min',
+    lastUpdate: 'Em Tempo Real',
   },
   {
     id: 'eusebio',
-    name: 'Fábrica & Torrefação Eusébio',
+    name: 'SAÚDE',
     type: 'patrol',
     location: 'Distrito Industrial, Eusébio - CE',
     coords: { x: 64, y: 62 },
     status: 'patrol',
-    statusLabel: 'Ronda em Andamento',
-    description: 'Equipe Alpha completando checklist no setor de moagem e expedição de café.',
+    statusLabel: 'Saúde & Bem-Estar Total',
+    description: 'Cuidar da saúde física e mental de nossa equipe é nossa maior prioridade diária.',
     officers: 8,
     camerasCount: 32,
-    lastUpdate: 'Há 8 min',
+    lastUpdate: 'Em Tempo Real',
   },
   {
     id: 'porto-mucuripe',
-    name: 'Terminal Logístico Portuário Mucuripe',
+    name: '3C',
     type: 'camera',
     location: 'Cais do Porto Mucuripe, Fortaleza - CE',
     coords: { x: 76, y: 40 },
     status: 'online',
-    statusLabel: 'Monitoramento de Exportação',
-    description: 'Carregamento de contêineres de café arábica especial para exportação.',
+    statusLabel: '3corações - Paixão & Excelência',
+    description: 'Movidos pela paixão de proporcionar momentos únicos com o sabor inconfundível do café.',
     officers: 5,
     camerasCount: 18,
-    lastUpdate: 'Há 12 min',
+    lastUpdate: 'Em Tempo Real',
   },
 ];
 
 export function InteractiveMap() {
   const [pins] = useState<UnitPin[]>(INITIAL_PINS);
   const [selectedPin, setSelectedPin] = useState<UnitPin | null>(null);
+  const [lastPhraseIndices, setLastPhraseIndices] = useState<Record<string, number>>({});
   const [activeLayers, setActiveLayers] = useState({
     unit: true,
     alert: true,
@@ -98,6 +159,25 @@ export function InteractiveMap() {
   const resetMap = () => {
     setZoomLevel(1);
     setSelectedPin(null);
+  };
+
+  const handleSelectPin = (pin: UnitPin) => {
+    const list = PHRASES_MAP[pin.id] || [];
+    if (list.length > 0) {
+      const prevIdx = lastPhraseIndices[pin.id] ?? -1;
+      let nextIdx = Math.floor(Math.random() * list.length);
+      if (list.length > 1 && nextIdx === prevIdx) {
+        nextIdx = (nextIdx + 1) % list.length;
+      }
+      setLastPhraseIndices((prev) => ({ ...prev, [pin.id]: nextIdx }));
+      const newPhrase = list[nextIdx];
+      setSelectedPin({
+        ...pin,
+        description: newPhrase,
+      });
+    } else {
+      setSelectedPin(pin);
+    }
   };
 
   return (
@@ -171,7 +251,7 @@ export function InteractiveMap() {
                 key={pin.id}
                 className="absolute cursor-pointer transition-transform hover:scale-125 z-20 group/pin"
                 style={{ top: `${pin.coords.y}%`, left: `${pin.coords.x}%` }}
-                onClick={() => setSelectedPin(pin)}
+                onClick={() => handleSelectPin(pin)}
               >
                 {/* Specific Pin Styles */}
                 {pin.type === 'unit' && (
@@ -179,8 +259,8 @@ export function InteractiveMap() {
                     <div className="w-7 h-7 rounded-full bg-[#151b26] border-2 border-[#c9a265] flex items-center justify-center text-[#c9a265] shadow-xl">
                       <div className="w-2.5 h-2.5 rounded-full bg-[#c9a265]"></div>
                     </div>
-                    <span className="text-[8.5px] font-bold text-white bg-black/80 px-1.5 py-0.2 rounded mt-0.5 shadow-xs whitespace-nowrap">
-                      {pin.name.split(' - ')[0]}
+                    <span className="text-[9px] font-extrabold text-white bg-black/85 px-2 py-0.5 rounded-md mt-1 shadow-md whitespace-nowrap border border-[#c9a265]/40 tracking-wider uppercase">
+                      {pin.name}
                     </span>
                   </div>
                 )}
@@ -190,7 +270,7 @@ export function InteractiveMap() {
                     <div className="w-8 h-8 rounded-full bg-[#2a1212] border-2 border-[#ef4444] flex items-center justify-center text-[#ef4444] shadow-xl animate-pulse">
                       <div className="w-3 h-3 rounded-full bg-[#ef4444]"></div>
                     </div>
-                    <span className="text-[8.5px] font-bold text-white bg-[#ef4444]/90 px-1.5 py-0.2 rounded mt-0.5 shadow-xs whitespace-nowrap">
+                    <span className="text-[9px] font-extrabold text-white bg-[#ef4444]/90 px-2 py-0.5 rounded-md mt-1 shadow-md whitespace-nowrap border border-rose-500/50 tracking-wider uppercase">
                       ALERTA CRÍTICO
                     </span>
                   </div>
@@ -201,8 +281,8 @@ export function InteractiveMap() {
                     <div className="w-7 h-7 rounded-full bg-[#10241e] border-2 border-[#10b981] flex items-center justify-center text-[#10b981] shadow-xl">
                       <div className="w-2.5 h-2.5 rounded-full bg-[#10b981]"></div>
                     </div>
-                    <span className="text-[8.5px] font-bold text-white bg-black/80 px-1.5 py-0.2 rounded mt-0.5 shadow-xs whitespace-nowrap">
-                      RONDA ATIVA
+                    <span className="text-[9px] font-extrabold text-white bg-black/85 px-2 py-0.5 rounded-md mt-1 shadow-md whitespace-nowrap border border-[#10b981]/40 tracking-wider uppercase">
+                      {pin.name}
                     </span>
                   </div>
                 )}
@@ -212,8 +292,8 @@ export function InteractiveMap() {
                     <div className="w-6 h-6 rounded-full bg-[#111e33] border-2 border-[#3b82f6] flex items-center justify-center text-[#3b82f6] shadow-xl">
                       <div className="w-2 h-2 rounded-full bg-[#3b82f6]"></div>
                     </div>
-                    <span className="text-[8.5px] font-bold text-white bg-black/80 px-1.5 py-0.2 rounded mt-0.5 shadow-xs whitespace-nowrap">
-                      CFTV PORTO
+                    <span className="text-[9px] font-extrabold text-white bg-black/85 px-2 py-0.5 rounded-md mt-1 shadow-md whitespace-nowrap border border-[#3b82f6]/40 tracking-wider uppercase">
+                      {pin.name}
                     </span>
                   </div>
                 )}
@@ -224,8 +304,8 @@ export function InteractiveMap() {
 
         {/* Selected Pin Details Overlay */}
         {selectedPin && (
-          <div className="absolute top-3 right-3 z-30 w-72 bg-[#151b26]/95 backdrop-blur-xl border border-[#c9a265] rounded-xl p-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-start justify-between mb-1.5">
+          <div className="absolute top-3 right-3 z-30 w-80 bg-[#151b26]/95 backdrop-blur-xl border border-[#c9a265] rounded-xl p-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between mb-2">
               <div>
                 <span
                   className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
@@ -238,70 +318,39 @@ export function InteractiveMap() {
                 >
                   {selectedPin.statusLabel}
                 </span>
-                <h4 className="text-xs font-bold text-white mt-1">{selectedPin.name}</h4>
+                <h4 className="text-sm font-extrabold text-white mt-1 uppercase tracking-wide">{selectedPin.name}</h4>
               </div>
               <button
                 onClick={() => setSelectedPin(null)}
                 className="text-[#94a3b8] hover:text-white p-1 rounded-md hover:bg-[#1f2737] transition-colors cursor-pointer"
                 title="Fechar"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-[11px] text-[#cbd5e1] mb-2 font-medium leading-relaxed">{selectedPin.description}</p>
+
+            <div className="bg-[#0c1017] p-3 rounded-lg border border-[#1f2737] mb-3">
+              <p className="text-xs text-[#f1f5f9] font-medium leading-relaxed italic">
+                "{selectedPin.description}"
+              </p>
+            </div>
+
+            <button
+              onClick={() => handleSelectPin(selectedPin)}
+              className="w-full flex items-center justify-center space-x-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-[#dfbe85]/20 to-[#c9a265]/20 hover:from-[#dfbe85]/30 hover:to-[#c9a265]/30 border border-[#c9a265]/50 text-[#dfbe85] hover:text-white text-xs font-bold transition-all cursor-pointer active:scale-95 mb-3"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#c9a265] animate-spin" style={{ animationDuration: '4s' }} />
+              <span>Ver Outra Frase</span>
+            </button>
+
             <div className="flex justify-between text-[10px] text-[#94a3b8] pt-2 border-t border-[#1f2737]">
               <span>Vigilantes: <b className="text-white">{selectedPin.officers}</b></span>
               <span>Câmeras: <b className="text-white">{selectedPin.camerasCount}</b></span>
-              <span>Atualização: <b className="text-[#c9a265]">{selectedPin.lastUpdate}</b></span>
+              <span>Status: <b className="text-[#c9a265]">{selectedPin.lastUpdate}</b></span>
             </div>
           </div>
         )}
-
-        {/* Bottom Legend */}
-        <div className="absolute bottom-3 left-3 bg-[#0c1017]/90 backdrop-blur-xl border border-[#1f2737] rounded-xl px-3.5 py-1.5 flex items-center space-x-4 text-[10px] font-medium z-20 shadow-lg">
-          <button
-            onClick={() => toggleLayer('unit')}
-            className={`flex items-center space-x-1.5 transition-opacity cursor-pointer ${
-              activeLayers.unit ? 'opacity-100' : 'opacity-40'
-            }`}
-          >
-            <div className="w-2.5 h-2.5 rounded-full bg-[#c9a265]"></div>
-            <span className="text-[#e2e8f0]">Unidades</span>
-          </button>
-
-          <button
-            onClick={() => toggleLayer('alert')}
-            className={`flex items-center space-x-1.5 transition-opacity cursor-pointer ${
-              activeLayers.alert ? 'opacity-100' : 'opacity-40'
-            }`}
-          >
-            <div className="w-2.5 h-2.5 rounded-full bg-[#ef4444] animate-pulse"></div>
-            <span className="text-[#e2e8f0]">Alertas</span>
-          </button>
-
-          <button
-            onClick={() => toggleLayer('patrol')}
-            className={`flex items-center space-x-1.5 transition-opacity cursor-pointer ${
-              activeLayers.patrol ? 'opacity-100' : 'opacity-40'
-            }`}
-          >
-            <div className="w-2.5 h-2.5 rounded-full bg-[#10b981]"></div>
-            <span className="text-[#e2e8f0]">Rondas</span>
-          </button>
-
-          <button
-            onClick={() => toggleLayer('camera')}
-            className={`flex items-center space-x-1.5 transition-opacity cursor-pointer ${
-              activeLayers.camera ? 'opacity-100' : 'opacity-40'
-            }`}
-          >
-            <div className="w-2.5 h-2.5 rounded-full bg-[#3b82f6]"></div>
-            <span className="text-[#e2e8f0]">Câmeras</span>
-          </button>
-        </div>
       </div>
     </div>
   );
 }
-
-

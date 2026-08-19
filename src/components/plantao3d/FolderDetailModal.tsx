@@ -10,6 +10,7 @@ import {
   Plus,
   Edit2,
   Trash2,
+  ChevronDown,
   Lock,
   Unlock,
   AlertTriangle,
@@ -29,7 +30,9 @@ import {
 } from 'lucide-react';
 import { PlantaoUser, PlantaoFolderItem, ItemTipo } from '../../types/plantao3d';
 import { getCurrentUser } from '../../lib/authStore';
-import { STATUS_CONFIG, PlantaoStatus } from '../../data/plantaoData';
+import { STATUS_CONFIG, PlantaoStatus, PlantaoItem } from '../../data/plantaoData';
+import { savePlantaoItemsToRtdb, saveOcorrenciasToRtdb } from '../../lib/realtimeDb';
+import { PlacaMercosul } from '../PlacaMercosul';
 
 import iconFolder3d from '../../assets/images/icon_folder_3d_1787015156529.jpg';
 import iconBadge3d from '../../assets/images/icon_badge_3d_1787015174678.jpg';
@@ -80,6 +83,69 @@ export function FolderDetailModal({
       (item.motorista && item.motorista.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchTipo && matchSearch;
   });
+
+  const handleOccurrenceStatusChange = (itemId: string, newStatus: PlantaoStatus) => {
+    // 1. Update plantao_items_v2 in RTDB and localStorage
+    const savedItemsStr = localStorage.getItem('plantao_items_v2');
+    if (savedItemsStr) {
+      try {
+        const folderItems: PlantaoFolderItem[] = JSON.parse(savedItemsStr);
+        let statusAcompanhamento: 'concluido' | 'acompanhar' | 'pendente_proximo_turno' | 'informativo' = 'acompanhar';
+        if (newStatus === 'resolvido') {
+          statusAcompanhamento = 'concluido';
+        } else if (newStatus === 'para conhecimento') {
+          statusAcompanhamento = 'informativo';
+        } else if (newStatus === 'atenção') {
+          statusAcompanhamento = 'pendente_proximo_turno';
+        } else if (newStatus === 'registro grid') {
+          statusAcompanhamento = 'concluido';
+        } else {
+          statusAcompanhamento = 'acompanhar';
+        }
+
+        const updatedFolderItems = folderItems.map((item) => {
+          if (item.id === itemId) {
+            return {
+              ...item,
+              statusOcorrencia: newStatus,
+              statusAcompanhamento,
+              prioridade: newStatus === 'atenção' ? 'critica' as const : 'normal' as const,
+            };
+          }
+          return item;
+        });
+
+        savePlantaoItemsToRtdb(updatedFolderItems);
+      } catch (e) {
+        console.error('Error updating folder item status in FolderDetailModal:', e);
+      }
+    }
+
+    // 2. Also update corresponding occurrence record in RTDB and localStorage
+    const recordId = itemId.startsWith('item-from-ocorrencia-')
+      ? itemId.replace('item-from-ocorrencia-', '')
+      : itemId;
+
+    const savedRecordsStr = localStorage.getItem('plantao_records_v2');
+    if (savedRecordsStr) {
+      try {
+        const records: PlantaoItem[] = JSON.parse(savedRecordsStr);
+        const updatedRecords = records.map((r) => {
+          if (r.id === recordId || r.id === itemId) {
+            return {
+              ...r,
+              status: newStatus,
+            };
+          }
+          return r;
+        });
+
+        saveOcorrenciasToRtdb(updatedRecords);
+      } catch (e) {
+        console.error('Error updating occurrence status in FolderDetailModal:', e);
+      }
+    }
+  };
 
   const handleCopyReport = () => {
     const text = `=== PASSAGEM DE PLANTÃO - PASTA: ${user.nome.toUpperCase()} ===\nFunção: ${user.funcao} | ${user.turno} (${user.periodo})\nData: ${new Date().toLocaleDateString('pt-BR')}\n\n` +
@@ -276,28 +342,38 @@ export function FolderDetailModal({
                       >
                         {item.tipo.replace('_', ' ')}
                       </span>
-                      <span
-                        className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                          item.prioridade === 'critica'
-                            ? 'bg-red-500/10 text-red-400 border border-red-500/30'
-                            : item.prioridade === 'importante'
-                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                            : 'bg-slate-800 text-slate-300 border border-slate-700'
-                        }`}
-                      >
-                        {item.prioridade}
-                      </span>
+                      {item.tipo !== 'ocorrencia' && (
+                        <span
+                          className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                            item.prioridade === 'critica'
+                              ? 'bg-red-500/10 text-red-400 border border-red-500/30'
+                              : item.prioridade === 'importante'
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                              : 'bg-slate-800 text-slate-300 border border-slate-700'
+                          }`}
+                        >
+                          {item.prioridade}
+                        </span>
+                      )}
                       {item.tipo === 'ocorrencia' && (
                         (() => {
                           const statusKey = (item.statusOcorrencia || 'acompanhar') as PlantaoStatus;
                           const statusCfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG['acompanhar'];
                           return (
-                            <span
-                              className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border ${statusCfg.badgeBg} ${statusCfg.badgeText} ${statusCfg.badgeBorder}`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dotColor}`} />
-                              <span>{statusCfg.label}</span>
-                            </span>
+                            <div className="relative inline-flex items-center">
+                              <select
+                                value={statusKey}
+                                onChange={(e) => handleOccurrenceStatusChange(item.id, e.target.value as PlantaoStatus)}
+                                className={`appearance-none pl-2.5 pr-7 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border outline-none cursor-pointer transition-all ${statusCfg.badgeBg} ${statusCfg.badgeText} ${statusCfg.badgeBorder} focus:ring-1 focus:ring-[#c9a265]`}
+                              >
+                                <option value="acompanhar" className="bg-[#0f141d] text-blue-400">Acompanhar</option>
+                                <option value="resolvido" className="bg-[#0f141d] text-emerald-400">Resolvido</option>
+                                <option value="para conhecimento" className="bg-[#0f141d] text-slate-300">Para Conhecimento</option>
+                                <option value="atenção" className="bg-[#0f141d] text-amber-400">Atenção</option>
+                                <option value="registro grid" className="bg-[#0f141d] text-purple-300">Registrado no Grid</option>
+                              </select>
+                              <ChevronDown className="w-3.5 h-3.5 text-[#c9a265] absolute right-1.5 pointer-events-none" />
+                            </div>
                           );
                         })()
                       )}
@@ -307,7 +383,7 @@ export function FolderDetailModal({
                       </div>
                     </div>
 
-                    {isOwner && (
+                    {isOwner && item.tipo !== 'ocorrencia' && (
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => onEditItem(item)}
@@ -338,9 +414,8 @@ export function FolderDetailModal({
                     {/* Vehicle/Driver/Location */}
                     <div className="flex flex-wrap items-center gap-2">
                       {item.veiculoPlaca && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#1a2332] border border-[#2b3c58]">
-                          <Truck className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="text-xs font-mono font-bold text-slate-300">{item.veiculoPlaca}</span>
+                        <div className="flex items-center">
+                          <PlacaMercosul placa={item.veiculoPlaca} />
                         </div>
                       )}
                       {item.motorista && (

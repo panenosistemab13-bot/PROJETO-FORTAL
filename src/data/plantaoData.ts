@@ -66,6 +66,7 @@ export interface PlantaoItem {
   operacao?: PlantaoOperacao;
   eventualidade: string;
   descricaoOcorrencia: string;
+  createdAt?: number;
   
   // Coluna Atualização/Retorno
   atualizacao: {
@@ -125,7 +126,7 @@ export const STATUS_CONFIG: Record<PlantaoStatus, {
     description: 'Ponto crítico requer atenção redobrada',
   },
   'registro grid': {
-    label: 'registro grid',
+    label: 'registrado no grid',
     badgeBg: 'bg-purple-500/15',
     badgeText: 'text-purple-300',
     badgeBorder: 'border-purple-500/30',

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, CheckCircle2, PlusCircle, Calendar, User } from 'lucide-react';
 import { PlantaoItem, PlantaoStatus, STATUS_CONFIG } from '../../data/plantaoData';
 import { VehiclePlateSelect } from '../VehiclePlateSelect';
+import { PlacaMercosul } from '../PlacaMercosul';
 
 interface AddPlantaoUpdateModalProps {
   isOpen: boolean;
@@ -71,9 +72,12 @@ export function AddPlantaoUpdateModal({
               <h3 className="text-sm font-bold text-white font-serif">
                 Adicionar Atualização / Retorno
               </h3>
-              <p className="text-[11px] text-slate-400">
-                Placa: <strong className="text-[#dfbe85]">{record.placa}</strong> &bull; {record.unidadeTransportadora}
-              </p>
+              <div className="flex items-center space-x-2 mt-1">
+                <span className="text-[10px] text-slate-400 font-bold uppercase">Placa:</span>
+                <PlacaMercosul placa={record.placa} />
+                <span className="text-slate-500">&bull;</span>
+                <span className="text-[11px] text-slate-300 font-semibold">{record.unidadeTransportadora}</span>
+              </div>
             </div>
           </div>
           <button

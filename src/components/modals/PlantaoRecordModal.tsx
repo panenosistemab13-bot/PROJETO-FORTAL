@@ -141,7 +141,7 @@ export function PlantaoRecordModal({
     const now = new Date();
     const dateStr = dataRegistro.trim() || now.toLocaleDateString('pt-BR');
     const timeStr = horaRegistro.trim() || now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const opStr = operador.trim() || getCurrentUser()?.fixedName || 'Operador CCO';
+    const opStr = operador.trim() || getCurrentUser()?.fixedName || 'Operador Central';
 
     const updatedRecord: PlantaoItem = {
       id: editingRecord ? editingRecord.id : `plantao-${Date.now()}`,
@@ -190,7 +190,7 @@ export function PlantaoRecordModal({
                 {editingRecord ? 'Editar Ocorrência' : 'Nova Ocorrência'}
               </h3>
               <p className="text-[11px] text-slate-400">
-                Registro de Ocorrência no Livro CCO &bull; Grupo 3corações
+                Registro de Ocorrência no Livro de Ocorrências &bull; Grupo 3corações
               </p>
             </div>
           </div>
@@ -273,7 +273,7 @@ export function PlantaoRecordModal({
                 <User className="w-3.5 h-3.5 text-[#c9a265]" />
                 <span>Identificação do Operador & Data/Hora</span>
               </div>
-              <span className="text-[10px] text-slate-400">CCO 3corações</span>
+              <span className="text-[10px] text-slate-400">Grupo 3corações</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-0.5">
@@ -545,7 +545,7 @@ export function PlantaoRecordModal({
         {/* 3. Modal Footer Action Bar (Fixed at Bottom - NEVER Cut Off) */}
         <div className="flex items-center justify-between px-5 py-3 border-t border-[#1f2838] bg-[#0f141d] flex-shrink-0">
           <div className="text-[11px] text-slate-400 hidden sm:block">
-            * Campos obrigatórios para lançamento no histórico do CCO
+            * Campos obrigatórios para lançamento no histórico do plantão
           </div>
 
           <div className="flex items-center space-x-2.5 ml-auto">

@@ -51,7 +51,6 @@ import bgEdificioJoaoLima from '../assets/images/edificio_joao_lima_360_17869709
 import bgEdificioJoaoLimaSede from '../assets/images/edificio_joao_lima_sede_1786970968314.jpg';
 import { ThreePanorama } from '../components/ThreePanorama';
 import { CollaboratorCalendarWidget } from '../components/CollaboratorCalendarWidget';
-import { LateralGoldScrollbar } from '../components/LateralGoldScrollbar';
 import { getCurrentUser } from '../lib/authStore';
 
 export type DayStatus = 'trabalhou' | 'falta' | 'folga' | 'atestado' | 'ferias';
@@ -71,6 +70,24 @@ export interface Collaborator {
 // Generate standard initial attendance for the month (clean initial state)
 const generateInitialAttendance = (): Record<string, DayStatus> => {
   return {};
+};
+
+const getAvatarStyle = (name: string) => {
+  const gradients = [
+    'bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-slate-300 border-slate-700/50',
+    'bg-gradient-to-br from-[#dfbe85]/20 to-[#8d6930]/20 text-[#dfbe85] border-[#c9a265]/40',
+    'bg-gradient-to-br from-amber-500/20 to-yellow-600/20 text-amber-300 border-amber-500/40',
+    'bg-gradient-to-br from-blue-500/20 to-indigo-600/20 text-blue-300 border-blue-500/40',
+    'bg-gradient-to-br from-emerald-500/20 to-teal-600/20 text-emerald-300 border-emerald-500/40',
+    'bg-gradient-to-br from-pink-500/20 to-rose-600/20 text-pink-300 border-pink-500/40',
+    'bg-gradient-to-br from-purple-500/20 to-violet-600/20 text-purple-300 border-purple-500/40',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % gradients.length;
+  return gradients[index];
 };
 
 // Initial roster matching the company spreadsheet
@@ -787,16 +804,14 @@ export function Colaboradores() {
 
   return (
     <div className="max-w-[2560px] mx-auto flex flex-col gap-5 relative z-10 select-none pb-16">
-      {/* Lateral Golden Scrollbar matching the reference image */}
-      <LateralGoldScrollbar />
 
       {/* 3D 360-Degree Panorama: Edifício João Lima (Grupo 3corações) */}
       <ThreePanorama imageUrl={activePanoramaImage} interactive={hideContent} />
 
-      {/* Subtle vignette overlay without blurring the 3D panorama */}
+      {/* Dark semi-opaque overlay ensuring 360 panorama wallpaper never interferes with table and text readability */}
       <div
-        className={`fixed inset-0 z-[-1] pointer-events-none bg-gradient-to-t from-[#070a0f]/60 via-transparent to-[#070a0f]/40 transition-all duration-700 ${
-          hideContent ? 'opacity-0' : 'opacity-100'
+        className={`fixed inset-0 z-[-1] pointer-events-none transition-all duration-700 ${
+          hideContent ? 'opacity-0 bg-transparent' : 'opacity-100 bg-[#0c1017]/92 backdrop-blur-md'
         }`}
       />
       <div className="fixed inset-0 z-[-1] pointer-events-none bg-[radial-gradient(ellipse_80%_80%_at_50%_50%,rgba(201,162,101,0.03),transparent_90%)]" />
@@ -810,7 +825,7 @@ export function Colaboradores() {
       {/* Floating Toggle when Controls are Hidden */}
       {hideContent && (
         <div className="fixed top-20 right-6 sm:right-8 z-50 animate-fade-in flex items-center gap-3">
-          <div className="flex items-center bg-[#0c1017]/95 border-2 border-[#c9a265] p-1.5 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl">
+          <div className="flex items-center bg-[#151b26] border-2 border-[#c9a265] p-1.5 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl">
             <button
               onClick={() => setActivePanorama('edificio_joao_lima')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
@@ -849,26 +864,26 @@ export function Colaboradores() {
       {/* 1. TOP HEADER & EXECUTIVE ACTION CONTROLS                */}
       {/* ======================================================== */}
       <div
-        className={`bg-[#0c1017]/95 border border-[#1e293b] rounded-2xl p-4 xl:p-5 shadow-2xl backdrop-blur-md transition-all duration-500 ${
+        className={`bg-[#151b26] border border-[#1f2737] hover:border-[#c9a265]/50 rounded-2xl p-4 xl:p-5 shadow-xl transition-all duration-500 ${
           hideContent ? 'opacity-0 scale-95 pointer-events-none -translate-y-4' : ''
         }`}
       >
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           {/* Title and Identification */}
           <div className="flex items-center space-x-3.5">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#dfbe85] via-[#c9a265] to-[#8d6930] flex items-center justify-center shadow-lg shadow-[#c9a265]/20 border border-[#dfbe85]">
-              <Users className="w-6 h-6 text-[#0c1017] stroke-[2.4]" />
+            <div className="w-11 h-11 rounded-xl bg-[#241e15] border border-[#c9a265]/40 flex items-center justify-center text-[#c9a265] shadow-sm">
+              <Users className="w-5 h-5 stroke-[2.4]" />
             </div>
             <div>
               <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                <h1 className="text-xl 2xl:text-2xl font-serif font-extrabold text-white tracking-wide">
+                <h1 className="text-lg 2xl:text-xl font-bold text-[#f1f5f9] tracking-wider uppercase">
                   Quadro de Colaboradores & Escalas
                 </h1>
                 <span className="text-[10px] uppercase font-mono tracking-widest px-2.5 py-0.5 rounded-full bg-[#c9a265]/20 border border-[#c9a265] text-[#dfbe85] font-bold flex items-center gap-1">
                   <Building2 className="w-3 h-3 text-[#c9a265]" /> Edifício João Lima
                 </span>
               </div>
-              <p className="text-xs text-slate-300 font-medium mt-0.5">
+              <p className="text-xs text-[#94a3b8] font-medium mt-0.5">
                 Gestão centralizada de efetivo, presença individual, escalas operacionais e aniversariantes • Grupo 3corações
               </p>
             </div>
@@ -877,7 +892,7 @@ export function Colaboradores() {
           {/* Action Tools */}
           <div className="flex items-center flex-wrap gap-2.5 w-full lg:w-auto justify-end">
             {/* 360 Panorama Selector */}
-            <div className="flex items-center bg-[#131924] border border-[#2d3748] p-1 rounded-xl shadow-inner">
+            <div className="flex items-center bg-[#0c1017] border border-[#1f2737] p-1 rounded-xl shadow-inner">
               <button
                 onClick={() => setActivePanorama('edificio_joao_lima')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
@@ -906,7 +921,7 @@ export function Colaboradores() {
 
             <button
               onClick={handleExportSpreadsheet}
-              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-[#131924] hover:bg-[#1a2332] border border-[#2d3748] hover:border-[#c9a265] text-slate-200 hover:text-[#dfbe85] transition-all text-xs font-bold cursor-pointer"
+              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-[#0c1017] hover:bg-[#1a2332] border border-[#1f2737] hover:border-[#c9a265] text-slate-200 hover:text-[#dfbe85] transition-all text-xs font-bold cursor-pointer"
             >
               <Download className="w-4 h-4 text-[#c9a265]" />
               <span>Exportar CSV</span>
@@ -924,7 +939,7 @@ export function Colaboradores() {
 
             <button
               onClick={() => setHideContent(!hideContent)}
-              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-black/80 hover:bg-black/95 border border-[#c9a265]/70 hover:border-[#c9a265] text-[#dfbe85] hover:text-white transition-all shadow-md cursor-pointer text-xs font-bold uppercase tracking-wider active:scale-95"
+              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-[#0c1017] hover:bg-[#151b26] border border-[#c9a265]/70 hover:border-[#c9a265] text-[#dfbe85] hover:text-white transition-all shadow-md cursor-pointer text-xs font-bold uppercase tracking-wider active:scale-95"
               title={hideContent ? 'Mostrar todos os controles e painéis' : 'Ocultar controles para explorar o ambiente 360°'}
             >
               {hideContent ? (
@@ -944,7 +959,7 @@ export function Colaboradores() {
       </div>
 
       {/* ======================================================== */}
-      {/* 2. EXECUTIVE METRICS CARDS (CLEAN & SPACIOUS)            */}
+      {/* 2. EXECUTIVE METRICS CARDS (MATCHING MENU INICIAL)       */}
       {/* ======================================================== */}
       <div
         className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 transition-all duration-500 ${
@@ -954,51 +969,51 @@ export function Colaboradores() {
         {/* Total Colaboradores */}
         <div
           onClick={() => setFilterType('all')}
-          className={`p-4 rounded-xl border transition-all cursor-pointer group bg-[#0c1017]/90 backdrop-blur-md ${
+          className={`p-4 rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 cursor-pointer group bg-[#151b26] shadow-xl ${
             filterType === 'all'
               ? 'border-[#c9a265] shadow-lg shadow-[#c9a265]/15 ring-1 ring-[#c9a265]'
-              : 'border-[#1e293b] hover:border-[#334155]'
+              : 'border-[#1f2737] hover:border-[#c9a265]/50'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Efetivo</span>
-            <div className="w-8 h-8 rounded-lg bg-[#c9a265]/15 border border-[#c9a265]/40 flex items-center justify-center text-[#dfbe85]">
+            <span className="text-xs text-[#94a3b8] font-bold uppercase tracking-wider">Total Efetivo</span>
+            <div className="w-8 h-8 rounded-xl bg-[#241e15] border border-[#c9a265]/40 flex items-center justify-center text-[#c9a265]">
               <Users className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline space-x-2">
-            <span className="text-2xl font-black text-white font-mono">{collaborators.length}</span>
-            <span className="text-xs text-slate-400 font-semibold">colaboradores ativos</span>
+            <span className="text-2xl font-extrabold text-white font-sans tracking-tight">{collaborators.length}</span>
+            <span className="text-xs text-[#94a3b8] font-semibold">colaboradores ativos</span>
           </div>
         </div>
 
         {/* Op. Monitoramento */}
         <div
           onClick={() => setFilterType('monitoring')}
-          className={`p-4 rounded-xl border transition-all cursor-pointer group bg-[#0c1017]/90 backdrop-blur-md ${
+          className={`p-4 rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 cursor-pointer group bg-[#151b26] shadow-xl ${
             filterType === 'monitoring'
               ? 'border-amber-500 shadow-lg shadow-amber-500/15 ring-1 ring-amber-500'
-              : 'border-[#1e293b] hover:border-[#334155]'
+              : 'border-[#1f2737] hover:border-[#c9a265]/50'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Op. Monitoramento</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400">
+            <span className="text-xs text-[#94a3b8] font-bold uppercase tracking-wider">Op. Monitoramento</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400">
               <ShieldCheck className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline space-x-2">
-            <span className="text-2xl font-black text-white font-mono">
+            <span className="text-2xl font-extrabold text-white font-sans tracking-tight">
               {collaborators.filter((c) => c.role.includes('MONIT')).length}
             </span>
-            <span className="text-xs text-slate-400 font-semibold">operadores / assistentes</span>
+            <span className="text-xs text-[#94a3b8] font-semibold">operadores / assistentes</span>
           </div>
         </div>
 
         {/* Aniversariantes do Mês / Hoje */}
         <div
           onClick={() => setIsBirthdayModalOpen(true)}
-          className="p-4 rounded-xl border border-pink-500/50 hover:border-pink-500 bg-gradient-to-br from-[#1b1220]/90 to-[#0c1017]/90 backdrop-blur-md transition-all cursor-pointer group shadow-lg shadow-pink-500/10"
+          className="p-4 rounded-2xl border border-[#1f2737] hover:border-pink-500/60 bg-[#151b26] transition-all duration-200 hover:-translate-y-0.5 cursor-pointer group shadow-xl"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs text-pink-300 font-bold uppercase tracking-wider flex items-center gap-1.5">
@@ -1010,8 +1025,8 @@ export function Colaboradores() {
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <div className="flex items-baseline space-x-2">
-              <span className="text-2xl font-black text-pink-400 font-mono">{birthdaysThisMonth.length}</span>
-              <span className="text-xs text-slate-300 font-semibold">no mês</span>
+              <span className="text-2xl font-extrabold text-pink-400 font-sans tracking-tight">{birthdaysThisMonth.length}</span>
+              <span className="text-xs text-[#94a3b8] font-semibold">no mês</span>
             </div>
             {birthdaysToday.length > 0 ? (
               <span className="px-2 py-0.5 rounded bg-pink-500 text-[10px] font-extrabold text-white animate-pulse">
@@ -1026,31 +1041,31 @@ export function Colaboradores() {
         {/* Família 3 Corações (Mães & Pais) */}
         <div
           onClick={() => setFilterType('mothers')}
-          className={`p-4 rounded-xl border transition-all cursor-pointer group bg-[#0c1017]/90 backdrop-blur-md ${
+          className={`p-4 rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 cursor-pointer group bg-[#151b26] shadow-xl ${
             filterType === 'mothers' || filterType === 'fathers'
               ? 'border-purple-500 shadow-lg shadow-purple-500/15 ring-1 ring-purple-500'
-              : 'border-[#1e293b] hover:border-[#334155]'
+              : 'border-[#1f2737] hover:border-[#c9a265]/50'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Família 3 Corações</span>
-            <div className="w-8 h-8 rounded-lg bg-purple-500/15 border border-purple-500/40 flex items-center justify-center text-purple-300">
+            <span className="text-xs text-[#94a3b8] font-bold uppercase tracking-wider">Família 3 Corações</span>
+            <div className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/40 flex items-center justify-center text-purple-300">
               <Heart className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2 flex items-center space-x-4">
             <div className="flex items-baseline space-x-1.5">
-              <span className="text-xl font-bold text-pink-400 font-mono">
+              <span className="text-xl font-extrabold text-pink-400 font-sans">
                 {collaborators.filter((c) => c.isMother).length}
               </span>
-              <span className="text-xs text-slate-400 font-medium">Mães</span>
+              <span className="text-xs text-[#94a3b8] font-semibold">Mães</span>
             </div>
             <span className="text-slate-600">•</span>
             <div className="flex items-baseline space-x-1.5">
-              <span className="text-xl font-bold text-blue-400 font-mono">
+              <span className="text-xl font-extrabold text-blue-400 font-sans">
                 {collaborators.filter((c) => c.isFather).length}
               </span>
-              <span className="text-xs text-slate-400 font-medium">Pais</span>
+              <span className="text-xs text-[#94a3b8] font-semibold">Pais</span>
             </div>
           </div>
         </div>
@@ -1060,7 +1075,7 @@ export function Colaboradores() {
       {/* 3. TOOLBAR: SEARCH, FILTERS & VIEW MODE                  */}
       {/* ======================================================== */}
       <div
-        className={`bg-[#0c1017]/90 backdrop-blur-md p-3.5 rounded-2xl border border-[#1e293b] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xl transition-all duration-500 ${
+        className={`bg-[#151b26] p-3.5 rounded-2xl border border-[#1f2737] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xl transition-all duration-500 ${
           hideContent ? 'opacity-0 scale-95 pointer-events-none translate-y-4' : ''
         }`}
       >
@@ -1072,7 +1087,7 @@ export function Colaboradores() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Pesquisar por colaborador, matrícula (ex: 1-10467), cargo ou data..."
-            className="w-full bg-[#131924] border border-[#2a3447] focus:border-[#c9a265] text-white text-xs font-medium pl-10 pr-8 py-2.5 rounded-xl placeholder-slate-400 outline-none transition-all"
+            className="w-full bg-[#0c1017] border border-[#1f2737] focus:border-[#c9a265] text-white text-xs font-medium pl-10 pr-8 py-2.5 rounded-xl placeholder-[#94a3b8] outline-none transition-all"
           />
           {searchQuery && (
             <button
@@ -1091,7 +1106,7 @@ export function Colaboradores() {
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               filterType === 'all'
                 ? 'bg-gradient-to-r from-[#dfbe85] to-[#c9a265] text-[#0c1017] shadow-sm'
-                : 'bg-[#151c28] text-slate-300 hover:text-white border border-[#2d3748]'
+                : 'bg-[#0c1017] text-[#94a3b8] hover:text-white border border-[#1f2737]'
             }`}
           >
             Todos ({collaborators.length})
@@ -1101,7 +1116,7 @@ export function Colaboradores() {
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               filterType === 'monitoring'
                 ? 'bg-amber-500 text-slate-950 shadow-sm'
-                : 'bg-[#151c28] text-slate-300 hover:text-white border border-[#2d3748]'
+                : 'bg-[#0c1017] text-[#94a3b8] hover:text-white border border-[#1f2737]'
             }`}
           >
             Monitoramento ({collaborators.filter((c) => c.role.includes('MONIT')).length})
@@ -1111,7 +1126,7 @@ export function Colaboradores() {
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               filterType === 'mothers'
                 ? 'bg-pink-500 text-white shadow-sm'
-                : 'bg-[#151c28] text-slate-300 hover:text-white border border-[#2d3748]'
+                : 'bg-[#0c1017] text-[#94a3b8] hover:text-white border border-[#1f2737]'
             }`}
           >
             Mães ({collaborators.filter((c) => c.isMother).length})
@@ -1121,7 +1136,7 @@ export function Colaboradores() {
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               filterType === 'fathers'
                 ? 'bg-blue-500 text-white shadow-sm'
-                : 'bg-[#151c28] text-slate-300 hover:text-white border border-[#2d3748]'
+                : 'bg-[#0c1017] text-[#94a3b8] hover:text-white border border-[#1f2737]'
             }`}
           >
             Pais ({collaborators.filter((c) => c.isFather).length})
@@ -1131,18 +1146,18 @@ export function Colaboradores() {
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               filterType === 'birthdays_month'
                 ? 'bg-purple-500 text-white shadow-sm'
-                : 'bg-[#151c28] text-slate-300 hover:text-white border border-[#2d3748]'
+                : 'bg-[#0c1017] text-[#94a3b8] hover:text-white border border-[#1f2737]'
             }`}
           >
             Aniversários Mês ({birthdaysThisMonth.length})
           </button>
 
           {/* View Switch */}
-          <div className="flex items-center bg-[#151c28] border border-[#2d3748] p-0.5 rounded-lg ml-2">
+          <div className="flex items-center bg-[#0c1017] border border-[#1f2737] p-0.5 rounded-lg ml-2">
             <button
               onClick={() => setViewMode('table')}
               className={`p-1.5 rounded-md transition-all ${
-                viewMode === 'table' ? 'bg-[#c9a265] text-[#0c1017]' : 'text-slate-400 hover:text-white'
+                viewMode === 'table' ? 'bg-[#c9a265] text-[#0c1017]' : 'text-[#94a3b8] hover:text-white'
               }`}
               title="Visualização em Tabela"
             >
@@ -1151,7 +1166,7 @@ export function Colaboradores() {
             <button
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-md transition-all ${
-                viewMode === 'grid' ? 'bg-[#c9a265] text-[#0c1017]' : 'text-slate-400 hover:text-white'
+                viewMode === 'grid' ? 'bg-[#c9a265] text-[#0c1017]' : 'text-[#94a3b8] hover:text-white'
               }`}
               title="Visualização em Cards"
             >
@@ -1166,14 +1181,14 @@ export function Colaboradores() {
       {/* ======================================================== */}
       {viewMode === 'table' ? (
         <div
-          className={`bg-[#0c1017]/95 backdrop-blur-md rounded-2xl border border-[#1e293b] shadow-2xl overflow-hidden transition-all duration-500 ${
+          className={`bg-[#151b26] rounded-2xl border border-[#1f2737] shadow-xl overflow-hidden transition-all duration-500 ${
             hideContent ? 'opacity-0 scale-95 pointer-events-none translate-y-4' : ''
           }`}
         >
           <div className="overflow-x-auto custom-scroll">
             <table className="w-full text-left border-collapse min-w-[1050px]">
               <thead>
-                <tr className="bg-gradient-to-r from-[#171e2b] via-[#1a2332] to-[#171e2b] text-[#dfbe85] font-extrabold text-xs tracking-wider uppercase border-b border-[#2d3748]">
+                <tr className="bg-[#0c1017] text-[#94a3b8] font-bold text-xs tracking-wider uppercase border-b border-[#1f2737]">
                   <th className="py-4 px-4 text-center w-28 font-mono">MATRÍCULA</th>
                   <th className="py-4 px-5">COLABORADOR</th>
                   <th className="py-4 px-4">FUNÇÃO</th>
@@ -1185,10 +1200,10 @@ export function Colaboradores() {
                   <th className="py-4 px-4 text-right w-24">AÇÕES</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#1e293b]/70 font-sans">
+              <tbody className="divide-y divide-[#1f2737]/60 font-sans text-xs">
                 {filteredList.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-16 text-center text-slate-400">
+                    <td colSpan={9} className="py-16 text-center text-[#94a3b8]">
                       <div className="flex flex-col items-center justify-center space-y-2">
                         <Filter className="w-8 h-8 text-slate-500" />
                         <p className="text-sm font-bold text-slate-300">Nenhum colaborador localizado.</p>
@@ -1198,7 +1213,6 @@ export function Colaboradores() {
                   </tr>
                 ) : (
                   filteredList.map((colab, idx) => {
-                    const isEven = idx % 2 === 0;
                     const birthParsed = parseBirthDate(colab.birthDate);
                     const isBirthMonth = birthParsed && birthParsed.month === currentMonth;
                     const isBirthToday = birthParsed && birthParsed.day === currentDay && birthParsed.month === currentMonth;
@@ -1206,9 +1220,7 @@ export function Colaboradores() {
                     return (
                       <tr
                         key={colab.id}
-                        className={`transition-colors duration-150 group hover:bg-[#162030]/90 ${
-                          isEven ? 'bg-[#0f1420]/60' : 'bg-[#0a0e16]/60'
-                        }`}
+                        className="transition-colors duration-150 group hover:bg-[#1f2737]/60 bg-[#151b26] border-b border-[#1f2737]/60"
                       >
                         {/* MATRÍCULA */}
                         <td className="py-3.5 px-4 text-center">
@@ -1220,7 +1232,7 @@ export function Colaboradores() {
                         {/* COLABORADOR */}
                         <td className="py-3.5 px-5">
                           <div className="flex items-center space-x-3">
-                            <div className="w-9 h-9 rounded-full bg-[#1b2434] border border-[#334155] group-hover:border-[#c9a265] flex items-center justify-center text-xs font-black text-[#dfbe85] flex-shrink-0 transition-colors">
+                            <div className={`w-9 h-9 rounded-full border flex items-center justify-center text-xs font-black flex-shrink-0 transition-all duration-300 ${getAvatarStyle(colab.name)}`}>
                               {colab.name.slice(0, 2).toUpperCase()}
                             </div>
                             <div>
@@ -1361,7 +1373,7 @@ export function Colaboradores() {
             return (
               <div
                 key={colab.id}
-                className="bg-[#0c1017]/95 backdrop-blur-md rounded-2xl border border-[#1e293b] hover:border-[#c9a265] p-4 flex flex-col justify-between transition-all duration-200 shadow-xl group hover:shadow-[#c9a265]/10"
+                className="bg-[#0c1017]/95 backdrop-blur-md rounded-2xl border border-[#1e293b] hover:border-[#c9a265] p-4 flex flex-col justify-between transition-all duration-300 shadow-xl group hover:shadow-[0_10px_30px_-10px_rgba(201,162,101,0.15)] hover:-translate-y-0.5"
               >
                 <div>
                   <div className="flex items-start justify-between">
@@ -1389,7 +1401,7 @@ export function Colaboradores() {
                   </div>
 
                   <div className="mt-3 flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full bg-[#1b2434] border border-[#334155] group-hover:border-[#c9a265] flex items-center justify-center text-xs font-black text-[#dfbe85] flex-shrink-0">
+                    <div className={`w-10 h-10 rounded-full border flex items-center justify-center text-xs font-black flex-shrink-0 transition-all duration-300 ${getAvatarStyle(colab.name)}`}>
                       {colab.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
@@ -2058,7 +2070,7 @@ export function Colaboradores() {
                     }`}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="w-9 h-9 rounded-full bg-[#1b2434] border border-[#334155] flex items-center justify-center text-xs font-bold text-[#dfbe85]">
+                      <div className={`w-9 h-9 rounded-full border flex items-center justify-center text-xs font-bold transition-all duration-300 ${getAvatarStyle(b.name)}`}>
                         {b.name.slice(0, 2).toUpperCase()}
                       </div>
                       <div>

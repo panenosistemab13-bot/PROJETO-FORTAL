@@ -24,7 +24,7 @@ export function QuickAccess({ onAction }: QuickAccessProps) {
     {
       id: 'passagem-plantao',
       label: 'Passagem Plantão',
-      desc: 'Troca de Turno CCO',
+      desc: 'Troca de Turno',
       icon: ArrowLeftRight,
       color: '#60a5fa',
     },

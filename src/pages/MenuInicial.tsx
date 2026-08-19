@@ -30,8 +30,8 @@ export function MenuInicial({ onKpiClick, onOpenAnalytics }: MenuInicialProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5 2xl:gap-6">
         <TeamPerformanceBarChart />
         <RecentActivities
-          onSelectActivity={(act) => {
-            alert(`Atividade: ${act.title}\nDetalhes: ${act.subtitle}`);
+          onSelectActivity={() => {
+            onKpiClick('ocorrencias');
           }}
         />
       </div>

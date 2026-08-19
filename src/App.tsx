@@ -59,12 +59,8 @@ export default function App() {
   };
 
   // KPI card click handler
-  const handleKpiClick = (type: string) => {
-    if (type === 'ocorrencias') setIsNewIncidentOpen(true);
-    if (type === 'rondas') setIsPatrolsOpen(true);
-    if (type === 'equipes') setIsLeadersOpen(true);
-    if (type === 'alertas') setIsAlertsOpen(true);
-    if (type === 'status') setIsSafetyOpen(true);
+  const handleKpiClick = (_type: string) => {
+    setActiveTab('ocorrencias');
   };
 
   // If unauthenticated, show the 4K 3D 360-Degree Login Page

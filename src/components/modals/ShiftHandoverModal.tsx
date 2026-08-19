@@ -47,7 +47,7 @@ export function ShiftHandoverModal({ isOpen, onClose }: ShiftHandoverModalProps)
             </div>
             <div>
               <h3 className="text-base font-bold text-[#1C1917] font-serif">
-                Passagem de Plantão CCO
+                Passagem de Plantão
               </h3>
               <p className="text-xs text-[#78716C]">
                 Troca de Turno Operacional &bull; Café Três Corações

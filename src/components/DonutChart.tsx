@@ -1,12 +1,30 @@
 import React, { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
-import { ChevronRight } from 'lucide-react';
+import { useOccurrencesStats } from '../lib/occurrencesStore';
 
 interface DonutChartProps {
   onOpenReports?: () => void;
 }
 
 export function DonutChart({ onOpenReports }: DonutChartProps) {
+  const stats = useOccurrencesStats();
+
+  const chartData = useMemo(() => {
+    const items = [
+      { name: 'Resolvidos', value: stats.resolvidos, itemStyle: { color: '#10b981' } },
+      { name: 'Acompanhar', value: stats.acompanhar, itemStyle: { color: '#3b82f6' } },
+      { name: 'Para Conhecimento', value: stats.paraConhecimento, itemStyle: { color: '#64748b' } },
+      { name: 'Atenção', value: stats.atencao, itemStyle: { color: '#f59e0b' } },
+      { name: 'Registrado no Grid', value: stats.registroGrid, itemStyle: { color: '#a855f7' } },
+    ].filter((item) => item.value > 0);
+
+    if (items.length === 0) {
+      return [{ name: 'Nenhuma Ocorrência', value: 1, itemStyle: { color: '#1f2737' } }];
+    }
+
+    return items;
+  }, [stats]);
+
   const option = useMemo(() => {
     return {
       backgroundColor: 'transparent',
@@ -22,6 +40,7 @@ export function DonutChart({ onOpenReports }: DonutChartProps) {
           fontSize: 11,
         },
         formatter: (params: any) => {
+          if (params.name === 'Nenhuma Ocorrência') return 'Sem ocorrências registradas';
           return `<div>
             <span style="color:#c9a265;font-weight:bold;">${params.name}</span>: ${params.percent}% (${params.value})
           </div>`;
@@ -45,25 +64,25 @@ export function DonutChart({ onOpenReports }: DonutChartProps) {
           emphasis: {
             scale: false,
           },
-          data: [
-            {
-              value: 1,
-              name: 'Nenhuma ocorrência',
-              itemStyle: { color: '#1f2737' },
-            },
-          ],
+          data: chartData,
         },
       ],
     };
-  }, []);
+  }, [chartData]);
 
-  const legendData = [
-    { label: 'Segurança Patrimonial', pct: '0%', color: '#c9a265' },
-    { label: 'Trânsito', pct: '0%', color: '#3b82f6' },
-    { label: 'Manutenção', pct: '0%', color: '#0ea5e9' },
-    { label: 'Comportamental', pct: '0%', color: '#854d0e' },
-    { label: 'Outros', pct: '0%', color: '#94a3b8' },
-  ];
+  const legendData = useMemo(() => {
+    const total = stats.totalAllTime || 1;
+    const calcPct = (val: number) =>
+      stats.totalAllTime > 0 ? `${Math.round((val / total) * 100)}%` : '0%';
+
+    return [
+      { label: 'Resolvidos', val: stats.resolvidos, pct: calcPct(stats.resolvidos), color: '#10b981' },
+      { label: 'Acompanhar', val: stats.acompanhar, pct: calcPct(stats.acompanhar), color: '#3b82f6' },
+      { label: 'Para Conhecimento', val: stats.paraConhecimento, pct: calcPct(stats.paraConhecimento), color: '#64748b' },
+      { label: 'Atenção', val: stats.atencao, pct: calcPct(stats.atencao), color: '#f59e0b' },
+      { label: 'Registrado no Grid', val: stats.registroGrid, pct: calcPct(stats.registroGrid), color: '#a855f7' },
+    ];
+  }, [stats]);
 
   return (
     <div className="bg-[#151b26] border border-[#1f2737] hover:border-[#c9a265]/50 rounded-2xl p-5 flex flex-col justify-between h-full min-h-[350px] shadow-xl transition-all relative">
@@ -75,7 +94,7 @@ export function DonutChart({ onOpenReports }: DonutChartProps) {
           </h3>
         </div>
 
-        {/* Donut Chart with Center Total 0 */}
+        {/* Donut Chart with Center Total */}
         <div className="flex flex-col items-center justify-center my-1">
           <div className="w-36 h-36 relative flex-shrink-0">
             <ReactECharts
@@ -86,7 +105,7 @@ export function DonutChart({ onOpenReports }: DonutChartProps) {
             {/* Center Text */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-2xl 2xl:text-3xl font-extrabold text-white font-sans leading-none">
-                00
+                {String(stats.totalAllTime).padStart(2, '0')}
               </span>
               <span className="text-[9px] text-[#94a3b8] tracking-widest uppercase font-semibold mt-0.5">
                 TOTAL
@@ -106,21 +125,13 @@ export function DonutChart({ onOpenReports }: DonutChartProps) {
                 />
                 <span className="text-[#cbd5e1] text-[11px] font-medium">{item.label}</span>
               </div>
-              <span className="text-white text-[11px] font-bold">{item.pct}</span>
+              <span className="text-white text-[11px] font-bold">
+                {item.val} ({item.pct})
+              </span>
             </div>
           ))}
         </div>
       </div>
-
-      {/* Bottom Link */}
-      <button
-        onClick={onOpenReports}
-        className="w-full mt-3 pt-2.5 border-t border-[#1f2737] flex items-center justify-between text-[11px] font-semibold text-[#c9a265] hover:text-[#dfbe85] transition-colors cursor-pointer group"
-      >
-        <span>VER RELATÓRIO COMPLETO</span>
-        <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-      </button>
     </div>
   );
 }
-
