@@ -41,6 +41,7 @@ import {
 } from '../lib/realtimeDb';
 import { PlantaoRecordModal } from '../components/modals/PlantaoRecordModal';
 import { AddPlantaoUpdateModal } from '../components/modals/AddPlantaoUpdateModal';
+import { NovaOcorrencia3DView } from '../components/NovaOcorrencia3DView';
 import { getCurrentUser } from '../lib/authStore';
 import { PlacaMercosul } from '../components/PlacaMercosul';
 import { INITIAL_VEHICLES_RAW } from '../data/veiculosData';
@@ -205,7 +206,7 @@ export function Ocorrencias() {
   const [selectedStatus, setSelectedStatus] = useState<PlantaoStatus | 'all'>('all');
   const [selectedOperacao, setSelectedOperacao] = useState<PlantaoOperacao | 'all'>('all');
   const [selectedTurno, setSelectedTurno] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
+  const [viewMode, setViewMode] = useState<'cards' | 'table' | 'nova_ocorrencia'>('table');
 
   // Subscription and clear hooks
   const currentUserObj = getCurrentUser();
@@ -500,6 +501,20 @@ export function Ocorrencias() {
               <LayoutGrid className="w-3.5 h-3.5" />
               <span>Cards</span>
             </button>
+            <button
+              onClick={() => {
+                setEditingRecord(null);
+                setViewMode('nova_ocorrencia');
+              }}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                viewMode === 'nova_ocorrencia'
+                  ? 'bg-gradient-to-r from-[#dfbe85] to-[#c9a265] text-[#0c1017] shadow-lg shadow-[#c9a265]/30'
+                  : 'text-[#dfbe85] hover:text-white hover:bg-[#1a2436]'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Nova Ocorrência 3D</span>
+            </button>
           </div>
 
           {records.length > 0 && isMaster && (
@@ -517,17 +532,28 @@ export function Ocorrencias() {
             <button
               onClick={() => {
                 setEditingRecord(null);
-                setIsRecordModalOpen(true);
+                setViewMode('nova_ocorrencia');
               }}
               className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] hover:brightness-110 text-[#140e06] font-bold text-xs flex items-center space-x-2 shadow-lg shadow-[#c9a265]/20 transition-all cursor-pointer active:scale-95"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>+ Novo Registro de Plantão</span>
+              <span>+ Nova Ocorrência 3D</span>
             </button>
           )}
         </div>
       </div>
 
+      {viewMode === 'nova_ocorrencia' ? (
+        <NovaOcorrencia3DView
+          onSave={(rec) => {
+            handleSaveRecord(rec);
+            setViewMode('table');
+          }}
+          onCancel={() => setViewMode('table')}
+          editingRecord={editingRecord}
+        />
+      ) : (
+        <>
       {/* Search & Filters Bar */}
       <div className="p-4 rounded-2xl bg-[#0f141d] border border-[#1e2738] shadow-md space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
@@ -949,6 +975,8 @@ export function Ocorrencias() {
           })}
         </div>
         )
+      )}
+      </>
       )}
 
       {/* Modals */}

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Search, Truck, X, ChevronDown, Check, Building2, MapPin } from 'lucide-react';
+import { Search, Truck, X, ChevronDown, Check, Building2 } from 'lucide-react';
 import { INITIAL_VEHICLES_RAW } from '../data/veiculosData';
 import { PlacaMercosul } from './PlacaMercosul';
 
@@ -13,13 +13,13 @@ interface VehiclePlateSelectProps {
 export function VehiclePlateSelect({
   value,
   onChange,
-  placeholder = 'Buscar placa ou transportadora...',
+  placeholder = 'EX: ABC-1D23 OU SELECION',
   className = '',
 }: VehiclePlateSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -32,15 +32,23 @@ export function VehiclePlateSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Focus search input when dropdown opens
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+    }
+  }, [isOpen]);
+
   // Filter list of vehicles from veiculosData
   const filteredVehicles = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
-    if (!term) return INITIAL_VEHICLES_RAW.slice(0, 50); // first 50 when empty
+    if (!term) return INITIAL_VEHICLES_RAW.slice(0, 50);
     return INITIAL_VEHICLES_RAW.filter(
       (v) =>
         v.plate.toLowerCase().includes(term) ||
-        v.carrier.toLowerCase().includes(term) ||
-        v.fleet.toLowerCase().includes(term)
+        v.carrier.toLowerCase().includes(term)
     );
   }, [searchTerm]);
 
@@ -50,83 +58,83 @@ export function VehiclePlateSelect({
     setIsOpen(false);
   };
 
-  const handleCustomInput = (customValue: string) => {
-    onChange(customValue.toUpperCase());
-  };
+  const selectedVehicleObj = useMemo(() => {
+    if (!value) return null;
+    return INITIAL_VEHICLES_RAW.find(v => v.plate.toUpperCase() === value.toUpperCase());
+  }, [value]);
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      {/* Trigger / Input box */}
-      <div className="relative flex items-center">
-        <div className="absolute left-3 text-slate-400 pointer-events-none flex items-center">
-          <Truck className="w-4 h-4 text-[#c9a265]" />
+      {/* Trigger Box */}
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between px-3.5 py-2.5 bg-[#090d14] hover:bg-[#0d131d] border border-[#232f45] hover:border-[#c9a265]/70 focus-within:border-[#c9a265] rounded-xl cursor-pointer transition-all shadow-inner group"
+      >
+        <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+          <div className="p-1 rounded-lg bg-[#182030] text-[#c9a265] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+            <Truck className="w-4 h-4 text-[#c9a265]" />
+          </div>
+
+          {value ? (
+            <div className="flex items-center space-x-2.5 min-w-0">
+              <PlacaMercosul placa={value} className="scale-90 origin-left flex-shrink-0" />
+              {selectedVehicleObj && (
+                <span className="text-xs text-[#dfbe85] font-bold truncate">
+                  {selectedVehicleObj.carrier}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-xs font-mono font-bold text-slate-400 tracking-wider truncate uppercase">
+              {placeholder}
+            </span>
+          )}
         </div>
 
-        <input
-          ref={inputRef}
-          type="text"
-          value={value}
-          onChange={(e) => {
-            handleCustomInput(e.target.value);
-            setSearchTerm(e.target.value);
-            if (!isOpen) setIsOpen(true);
-          }}
-          onFocus={() => {
-            setSearchTerm(value);
-            setIsOpen(true);
-          }}
-          placeholder={placeholder}
-          className="w-full pl-9 pr-16 py-2 bg-[#121824] border border-[#232f45] focus:border-[#c9a265] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none transition-all shadow-inner uppercase tracking-wider font-semibold font-mono"
-        />
-
-        <div className="absolute right-2 flex items-center space-x-1">
+        <div className="flex items-center space-x-1.5 flex-shrink-0 ml-2">
           {value && (
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 onChange('');
                 setSearchTerm('');
-                inputRef.current?.focus();
               }}
-              className="p-1 text-slate-400 hover:text-white rounded-md hover:bg-slate-700/50 transition-colors"
+              className="p-1 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors"
+              title="Limpar placa"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => setIsOpen(!isOpen)}
-            className="p-1 text-slate-400 hover:text-[#c9a265] rounded-md hover:bg-slate-700/50 transition-colors"
-          >
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-          </button>
+          <ChevronDown className={`w-4 h-4 text-slate-400 group-hover:text-[#c9a265] transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#c9a265]' : ''}`} />
         </div>
       </div>
 
-      {/* Dropdown Menu */}
+      {/* Dropdown Menu Modal */}
       {isOpen && (
-        <div className="absolute z-50 left-0 right-0 mt-1.5 bg-[#0f141f] border border-[#c9a265]/40 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-64 flex flex-col">
+        <div className="absolute z-50 left-0 right-0 sm:min-w-[340px] mt-1.5 bg-[#090d14] border border-[#2d3b55] rounded-2xl shadow-[0_15px_35px_rgba(0,0,0,0.9)] overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-80 ring-1 ring-[#c9a265]/30">
+          
           {/* Top Search bar inside dropdown */}
-          <div className="p-2 border-b border-[#232f45] bg-[#151c2a] flex items-center space-x-2">
-            <Search className="w-3.5 h-3.5 text-[#c9a265]" />
+          <div className="p-2.5 border-b border-[#1f2a3e] bg-[#0d121c] flex items-center space-x-2.5">
+            <Search className="w-4 h-4 text-[#c9a265] flex-shrink-0 ml-1" />
             <input
+              ref={searchInputRef}
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Filtrar por placa, frota ou transportadora..."
-              className="w-full bg-transparent text-xs text-white placeholder-slate-400 focus:outline-none"
-              autoFocus
+              placeholder="Filtrar por placa ou transportador..."
+              className="w-full bg-transparent text-xs text-white placeholder-slate-400 focus:outline-none font-medium"
             />
-            <span className="text-[10px] text-slate-400 font-mono px-1.5 py-0.5 bg-[#1e2738] rounded">
+            <span className="text-[10px] text-slate-300 font-mono font-bold px-2 py-0.5 bg-[#172132] border border-[#2b3a52] rounded-md flex-shrink-0">
               {filteredVehicles.length}
             </span>
           </div>
 
-          {/* List items */}
-          <div className="overflow-y-auto custom-scroll flex-1 divide-y divide-[#1b2434]">
+          {/* List items: APENAS PLACA E TRANSPORTADORA */}
+          <div className="overflow-y-auto custom-scroll flex-1 divide-y divide-[#161f30] p-1.5">
             {filteredVehicles.length === 0 ? (
-              <div className="p-4 text-center">
-                <p className="text-xs text-slate-400 mb-1">Nenhum veículo cadastrado com esse termo.</p>
+              <div className="p-5 text-center">
+                <p className="text-xs text-slate-400 mb-2">Nenhum veículo encontrado para "{searchTerm}".</p>
                 {searchTerm && (
                   <button
                     type="button"
@@ -134,7 +142,7 @@ export function VehiclePlateSelect({
                       onChange(searchTerm.toUpperCase());
                       setIsOpen(false);
                     }}
-                    className="text-[11px] text-[#c9a265] hover:underline font-semibold cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-[#c9a265]/20 border border-[#c9a265]/40 text-[#dfbe85] text-xs font-bold hover:bg-[#c9a265]/30 transition-all cursor-pointer"
                   >
                     Usar placa digitada: "{searchTerm.toUpperCase()}"
                   </button>
@@ -143,51 +151,56 @@ export function VehiclePlateSelect({
             ) : (
               filteredVehicles.map((v, idx) => {
                 const isSelected = value.toUpperCase() === v.plate.toUpperCase();
-                const is3C = v.carrier.startsWith('3C');
 
                 return (
                   <button
                     key={`${v.plate}-${idx}`}
                     type="button"
                     onClick={() => handleSelect(v.plate, v.carrier, v.fleet)}
-                    className={`w-full text-left p-2.5 flex items-center justify-between hover:bg-[#1b2536] transition-colors cursor-pointer group ${
-                      isSelected ? 'bg-[#c9a265]/15 border-l-2 border-[#c9a265]' : ''
+                    className={`w-full text-left p-2.5 rounded-xl flex items-center justify-between hover:bg-[#131c2c] transition-all cursor-pointer group ${
+                      isSelected ? 'bg-[#1a2538] border border-[#c9a265]/60' : 'border border-transparent'
                     }`}
                   >
-                    <div className="flex items-center space-x-2.5 min-w-0">
-                      {/* Plate Badge */}
-                      <PlacaMercosul placa={v.plate} />
+                    <div className="flex items-center space-x-3.5 min-w-0 flex-1">
+                      {/* 1. Placa Mercosul */}
+                      <PlacaMercosul placa={v.plate} className="flex-shrink-0 shadow-md" />
 
-                      {/* Carrier & Fleet details */}
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-xs text-slate-200 font-medium truncate group-hover:text-white flex items-center gap-1">
-                          <Building2 className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                      {/* 2. Transportadora Apenas */}
+                      <div className="flex items-center space-x-2 min-w-0 flex-1">
+                        <Building2 className="w-3.5 h-3.5 text-[#c9a265] flex-shrink-0" />
+                        <span className="text-xs font-bold text-slate-200 group-hover:text-white truncate">
                           {v.carrier}
-                        </span>
-                        <span className="text-[10px] text-slate-400 truncate flex items-center gap-1">
-                          <MapPin className="w-2.5 h-2.5 text-slate-500 flex-shrink-0" />
-                          Frota: {v.fleet}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-1.5 flex-shrink-0 ml-2">
-                      <span
-                        className={`text-[9.5px] px-1.5 py-0.5 rounded font-medium ${
-                          is3C
-                            ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
-                            : 'bg-blue-500/10 text-blue-300 border border-blue-500/20'
-                        }`}
-                      >
-                        {is3C ? 'Frota 3C' : 'Parceira'}
-                      </span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-[#c9a265]" />}
-                    </div>
+                    {isSelected && (
+                      <Check className="w-4 h-4 text-[#c9a265] flex-shrink-0 ml-2" />
+                    )}
                   </button>
                 );
               })
             )}
           </div>
+
+          {/* Quick custom plate input footer */}
+          <div className="p-2.5 border-t border-[#1c2638] bg-[#0b1018] flex items-center justify-between text-[11px] text-slate-400 px-3">
+            <span>Não encontrou na lista?</span>
+            <button
+              type="button"
+              onClick={() => {
+                const customPlate = prompt('Digite a placa avulsa do veículo:');
+                if (customPlate && customPlate.trim()) {
+                  onChange(customPlate.trim().toUpperCase());
+                  setIsOpen(false);
+                }
+              }}
+              className="text-[#dfbe85] font-bold hover:underline cursor-pointer"
+            >
+              + Inserir Placa Manual
+            </button>
+          </div>
+
         </div>
       )}
     </div>

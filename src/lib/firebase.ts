@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getDatabase, Database } from 'firebase/database';
-import { getAuth, Auth } from 'firebase/auth';
+import { getAuth, Auth, initializeAuth, browserLocalPersistence, browserSessionPersistence, inMemoryPersistence } from 'firebase/auth';
 
 // Firebase configuration provided from project "Passagem de Turno" (ID: passagem-de-turno-1d855)
 export const firebaseConfig = {
@@ -20,7 +20,16 @@ const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 // Initialize Firebase Realtime Database with explicit URL
 export const rtdb: Database = getDatabase(app, firebaseConfig.databaseURL);
 
-// Initialize Firebase Auth
-export const auth: Auth = getAuth(app);
+// Initialize Firebase Auth safely with multi-layer persistence fallbacks (avoids IndexedDB lock / closing crashes in iframes)
+let authInstance: Auth;
+try {
+  authInstance = initializeAuth(app, {
+    persistence: [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence],
+  });
+} catch {
+  authInstance = getAuth(app);
+}
+
+export const auth: Auth = authInstance;
 
 export default app;
