@@ -18,8 +18,8 @@ export function SantaLuziaPatio360Bg({ children }: SantaLuziaPatio360BgProps) {
   const latRef = useRef(0);
   const targetLonRef = useRef(0);
   const targetLatRef = useRef(0);
-  // Default wide FOV (105) for zoomed-out panoramic perspective
-  const fovRef = useRef(105);
+  // Default wide FOV (115) for zoomed-out panoramic perspective
+  const fovRef = useRef(115);
   const [isAutoRotate, setIsAutoRotate] = useState(true);
   const isAutoRotateRef = useRef(true);
   const [is360Only, setIs360Only] = useState(false);

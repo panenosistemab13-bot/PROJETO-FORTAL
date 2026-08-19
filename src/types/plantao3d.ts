@@ -34,6 +34,7 @@ export interface PlantaoFolderItem {
   motorista?: string;
   local?: string;
   statusAcompanhamento: 'concluido' | 'acompanhar' | 'pendente_proximo_turno' | 'informativo';
+  statusOcorrencia?: string;
   checklistItems?: { id: string; texto: string; concluido: boolean }[];
   tags?: string[];
   createdAt: number;

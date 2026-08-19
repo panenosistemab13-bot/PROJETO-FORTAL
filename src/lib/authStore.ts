@@ -5,6 +5,8 @@ export interface User {
   password: string;
   role: string;
   profilePic?: string;
+  plantaoFolderId?: string;
+  plantaoFolderName?: string;
 }
 
 const DEFAULT_USERS: User[] = [
@@ -21,6 +23,8 @@ const DEFAULT_USERS: User[] = [
     login: 'crisfialho',
     password: '123',
     role: 'Administrador CCO',
+    plantaoFolderId: 'user-cristiane-fialho',
+    plantaoFolderName: 'Cristiane Fialho',
   }
 ];
 

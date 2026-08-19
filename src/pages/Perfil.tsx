@@ -30,6 +30,8 @@ export function Perfil() {
   const [isAddingRole, setIsAddingRole] = useState(false);
   const [newRole, setNewRole] = useState('');
 
+  const visibleRoles = availableRoles.filter(r => r !== 'Mestre' || currentUser?.login?.toLowerCase() === 'jeff');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -115,7 +117,7 @@ export function Perfil() {
 
   return (
     <SantaLuziaPatio360Bg>
-      <div className="w-full max-w-[380px] rounded-3xl bg-[#0c1017]/90 backdrop-blur-xl border-2 border-[#c9a265]/50 p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.85)] relative overflow-hidden my-2">
+      <div className="w-full max-w-[360px] rounded-3xl bg-[#0c1017]/90 backdrop-blur-xl border-2 border-[#c9a265]/50 p-4 sm:p-5 shadow-[0_20px_50px_rgba(0,0,0,0.85)] relative overflow-hidden my-2 transform scale-90 sm:scale-95 origin-center">
         {/* Decorative Top Highlight */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#c9a265] to-transparent" />
         
@@ -257,14 +259,14 @@ export function Perfil() {
                     onChange={(e) => setRole(e.target.value)}
                     className="w-full pl-9 pr-10 py-2 rounded-xl bg-[#141b26]/90 border border-[#242d3d] focus:border-[#c9a265] text-xs sm:text-sm text-slate-100 outline-none appearance-none cursor-pointer"
                   >
-                    {availableRoles.map(r => (
+                    {visibleRoles.map(r => (
                       <option key={r} value={r}>{r}</option>
                     ))}
                   </select>
                 </div>
-                {availableRoles.length > 1 && (
+                {visibleRoles.length > 1 && (
                   <div className="flex flex-wrap gap-1.5 pt-1">
-                    {availableRoles.map(r => (
+                    {visibleRoles.map(r => (
                       <div key={r} className={`flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] ${r === role ? 'bg-[#c9a265]/20 text-[#c9a265] border border-[#c9a265]/40' : 'bg-[#141b26] text-slate-400'}`}>
                         <span>{r}</span>
                         <button 

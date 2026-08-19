@@ -24,6 +24,7 @@ import {
   OPERACAO_OPTIONS,
 } from '../../data/plantaoData';
 import { VehiclePlateSelect } from '../VehiclePlateSelect';
+import { getCurrentUser } from '../../lib/authStore';
 
 interface PlantaoRecordModalProps {
   isOpen: boolean;
@@ -68,12 +69,18 @@ export function PlantaoRecordModal({
   // Identificação: Data, Hora e Operador
   const [dataRegistro, setDataRegistro] = useState('');
   const [horaRegistro, setHoraRegistro] = useState('');
-  const [operador, setOperador] = useState('Cristiane Fialho');
+  const [operador, setOperador] = useState(() => {
+    const user = getCurrentUser();
+    return user?.fixedName || 'Jefferson';
+  });
 
   // Zoom scale state (default 85% for compact, perfectly centered fit without any clipping)
   const [modalZoom, setModalZoom] = useState<number>(0.85);
 
   useEffect(() => {
+    const currentUser = getCurrentUser();
+    const currentUserName = currentUser?.fixedName || 'Jefferson';
+
     if (editingRecord) {
       setObservacao(editingRecord.observacao || '');
       setUnidadeTransportadora(editingRecord.unidadeTransportadora || '');
@@ -90,7 +97,7 @@ export function PlantaoRecordModal({
       setStatus(editingRecord.status || 'acompanhar');
       setDataRegistro(editingRecord.dataRegistro || '');
       setHoraRegistro(editingRecord.horaRegistro || '');
-      setOperador(editingRecord.operador || 'Cristiane Fialho');
+      setOperador(editingRecord.operador || currentUserName);
     } else {
       const now = new Date();
       // Reset defaults
@@ -107,7 +114,7 @@ export function PlantaoRecordModal({
       setStatus('acompanhar');
       setDataRegistro(now.toLocaleDateString('pt-BR'));
       setHoraRegistro(now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
-      setOperador('Cristiane Fialho');
+      setOperador(currentUserName);
     }
   }, [editingRecord, isOpen]);
 
@@ -134,7 +141,7 @@ export function PlantaoRecordModal({
     const now = new Date();
     const dateStr = dataRegistro.trim() || now.toLocaleDateString('pt-BR');
     const timeStr = horaRegistro.trim() || now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const opStr = operador.trim() || 'Cristiane Fialho';
+    const opStr = operador.trim() || getCurrentUser()?.fixedName || 'Operador CCO';
 
     const updatedRecord: PlantaoItem = {
       id: editingRecord ? editingRecord.id : `plantao-${Date.now()}`,
@@ -270,53 +277,71 @@ export function PlantaoRecordModal({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-0.5">
-              {/* Operador / Usuário */}
+              {/* Operador / Usuário (Fixo de acordo com o usuário logado) */}
               <div>
-                <label className="text-[10.5px] font-bold text-slate-300 block mb-1">
-                  Nome do Operador / Usuário *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10.5px] font-bold text-slate-300">
+                    Operador / Usuário
+                  </label>
+                  <span className="text-[9px] font-extrabold text-[#c9a265] bg-[#c9a265]/15 border border-[#c9a265]/40 px-1.5 py-0.5 rounded tracking-wider uppercase">
+                    Fixo (Logado)
+                  </span>
+                </div>
                 <div className="relative">
                   <User className="w-3.5 h-3.5 text-[#c9a265] absolute left-2.5 top-2.5 pointer-events-none" />
                   <input
                     type="text"
                     value={operador}
-                    onChange={(e) => setOperador(e.target.value)}
-                    placeholder="Ex: Cristiane Fialho, Robson..."
-                    className="w-full pl-8 pr-3 py-1.5 bg-[#0b0f17] border border-[#232f45] focus:border-[#c9a265] rounded-xl text-xs font-semibold text-[#fce8c3] placeholder-slate-500 focus:outline-none transition-all shadow-inner"
+                    readOnly
+                    disabled
+                    title="Nome fixo de acordo com o usuário conectado no sistema"
+                    className="w-full pl-8 pr-3 py-1.5 bg-[#070b10] border border-[#232f45] rounded-xl text-xs font-bold text-[#fce8c3] cursor-not-allowed select-none shadow-inner opacity-95"
                   />
                 </div>
               </div>
 
               {/* Data do Registro */}
               <div>
-                <label className="text-[10.5px] font-bold text-slate-300 block mb-1">
-                  Data do Registro
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10.5px] font-bold text-slate-300">
+                    Data do Registro
+                  </label>
+                  <span className="text-[9px] font-extrabold text-[#c9a265] bg-[#c9a265]/15 border border-[#c9a265]/40 px-1.5 py-0.5 rounded tracking-wider uppercase">
+                    Fixo
+                  </span>
+                </div>
                 <div className="relative">
-                  <Calendar className="w-3.5 h-3.5 text-[#dfbe85] absolute left-2.5 top-2.5 pointer-events-none" />
+                  <Calendar className="w-3.5 h-3.5 text-[#c9a265] absolute left-2.5 top-2.5 pointer-events-none" />
                   <input
                     type="text"
                     value={dataRegistro}
-                    onChange={(e) => setDataRegistro(e.target.value)}
-                    placeholder="DD/MM/AAAA"
-                    className="w-full pl-8 pr-3 py-1.5 bg-[#0b0f17] border border-[#232f45] focus:border-[#c9a265] rounded-xl text-xs font-mono font-bold text-white placeholder-slate-500 focus:outline-none transition-all shadow-inner"
+                    readOnly
+                    disabled
+                    title="Data do registro gerada automaticamente pelo sistema para evitar adulteração"
+                    className="w-full pl-8 pr-3 py-1.5 bg-[#070b10] border border-[#232f45] rounded-xl text-xs font-mono font-bold text-[#fce8c3] cursor-not-allowed select-none shadow-inner opacity-95"
                   />
                 </div>
               </div>
 
               {/* Hora do Registro */}
               <div>
-                <label className="text-[10.5px] font-bold text-slate-300 block mb-1">
-                  Horário
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10.5px] font-bold text-slate-300">
+                    Horário
+                  </label>
+                  <span className="text-[9px] font-extrabold text-[#c9a265] bg-[#c9a265]/15 border border-[#c9a265]/40 px-1.5 py-0.5 rounded tracking-wider uppercase">
+                    Fixo
+                  </span>
+                </div>
                 <div className="relative">
-                  <Clock className="w-3.5 h-3.5 text-[#dfbe85] absolute left-2.5 top-2.5 pointer-events-none" />
+                  <Clock className="w-3.5 h-3.5 text-[#c9a265] absolute left-2.5 top-2.5 pointer-events-none" />
                   <input
                     type="text"
                     value={horaRegistro}
-                    onChange={(e) => setHoraRegistro(e.target.value)}
-                    placeholder="HH:MM"
-                    className="w-full pl-8 pr-3 py-1.5 bg-[#0b0f17] border border-[#232f45] focus:border-[#c9a265] rounded-xl text-xs font-mono font-bold text-[#dfbe85] placeholder-slate-500 focus:outline-none transition-all shadow-inner"
+                    readOnly
+                    disabled
+                    title="Horário do registro gerado automaticamente pelo sistema para evitar adulteração"
+                    className="w-full pl-8 pr-3 py-1.5 bg-[#070b10] border border-[#232f45] rounded-xl text-xs font-mono font-bold text-[#fce8c3] cursor-not-allowed select-none shadow-inner opacity-95"
                   />
                 </div>
               </div>

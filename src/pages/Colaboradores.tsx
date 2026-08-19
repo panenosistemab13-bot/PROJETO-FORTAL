@@ -52,6 +52,7 @@ import bgEdificioJoaoLimaSede from '../assets/images/edificio_joao_lima_sede_178
 import { ThreePanorama } from '../components/ThreePanorama';
 import { CollaboratorCalendarWidget } from '../components/CollaboratorCalendarWidget';
 import { LateralGoldScrollbar } from '../components/LateralGoldScrollbar';
+import { getCurrentUser } from '../lib/authStore';
 
 export type DayStatus = 'trabalhou' | 'falta' | 'folga' | 'atestado' | 'ferias';
 
@@ -437,6 +438,10 @@ export function Colaboradores() {
   // Modal State for Add / Edit
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  const currentUserObj = getCurrentUser();
+  const isMaster = currentUserObj?.role?.toLowerCase().includes('mestre') || currentUserObj?.role === 'Mestre';
+
   const [formData, setFormData] = useState<{
     registration: string;
     name: string;
@@ -802,6 +807,44 @@ export function Colaboradores() {
       <div id="3d-cup-container" className="fixed bottom-0 right-10 w-32 h-32 pointer-events-none z-0" />
       <div id="3d-map-container" className="fixed bottom-0 left-10 w-32 h-32 pointer-events-none z-0" />
 
+      {/* Floating Toggle when Controls are Hidden */}
+      {hideContent && (
+        <div className="fixed top-20 right-6 sm:right-8 z-50 animate-fade-in flex items-center gap-3">
+          <div className="flex items-center bg-[#0c1017]/95 border-2 border-[#c9a265] p-1.5 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl">
+            <button
+              onClick={() => setActivePanorama('edificio_joao_lima')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activePanorama === 'edificio_joao_lima'
+                  ? 'bg-gradient-to-r from-[#dfbe85] to-[#c9a265] text-[#0c1017] shadow-sm'
+                  : 'text-slate-300 hover:text-[#dfbe85]'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              <span>Ed. João Lima</span>
+            </button>
+            <button
+              onClick={() => setActivePanorama('edificio_joao_lima_sede')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activePanorama === 'edificio_joao_lima_sede'
+                  ? 'bg-gradient-to-r from-[#dfbe85] to-[#c9a265] text-[#0c1017] shadow-sm'
+                  : 'text-slate-300 hover:text-[#dfbe85]'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Fachada Sede</span>
+            </button>
+          </div>
+
+          <button
+            onClick={() => setHideContent(false)}
+            className="flex items-center space-x-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#8d6930] hover:brightness-110 text-[#0c1017] font-black transition-all shadow-[0_10px_30px_rgba(201,162,101,0.4)] cursor-pointer active:scale-95 text-xs uppercase tracking-wider group"
+          >
+            <Eye className="w-4 h-4 stroke-[2.5] animate-pulse" />
+            <span>Mostrar Controles</span>
+          </button>
+        </div>
+      )}
+
       {/* ======================================================== */}
       {/* 1. TOP HEADER & EXECUTIVE ACTION CONTROLS                */}
       {/* ======================================================== */}
@@ -869,20 +912,32 @@ export function Colaboradores() {
               <span>Exportar CSV</span>
             </button>
 
-            <button
-              onClick={handleOpenAdd}
-              className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] hover:from-[#ebd3a8] hover:via-[#dcb67d] hover:to-[#b58d4e] text-[#0f0b04] font-extrabold transition-all shadow-lg shadow-[#c9a265]/20 text-xs uppercase tracking-wider cursor-pointer active:scale-95"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Novo Colaborador</span>
-            </button>
+            {isMaster && (
+              <button
+                onClick={handleOpenAdd}
+                className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] hover:from-[#ebd3a8] hover:via-[#dcb67d] hover:to-[#b58d4e] text-[#0f0b04] font-extrabold transition-all shadow-lg shadow-[#c9a265]/20 text-xs uppercase tracking-wider cursor-pointer active:scale-95"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+                <span>Novo Colaborador</span>
+              </button>
+            )}
 
             <button
               onClick={() => setHideContent(!hideContent)}
-              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-black/80 hover:bg-black/95 border border-[#c9a265]/70 hover:border-[#c9a265] text-[#dfbe85] hover:text-white transition-all shadow-md cursor-pointer text-xs font-bold uppercase tracking-wider"
+              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-black/80 hover:bg-black/95 border border-[#c9a265]/70 hover:border-[#c9a265] text-[#dfbe85] hover:text-white transition-all shadow-md cursor-pointer text-xs font-bold uppercase tracking-wider active:scale-95"
+              title={hideContent ? 'Mostrar todos os controles e painéis' : 'Ocultar controles para explorar o ambiente 360°'}
             >
-              {hideContent ? <Eye className="w-4 h-4 text-[#c9a265] animate-pulse" /> : <EyeOff className="w-4 h-4 text-[#c9a265]" />}
-              <span>{hideContent ? 'Painel' : 'Visão 360°'}</span>
+              {hideContent ? (
+                <>
+                  <Eye className="w-4 h-4 text-[#c9a265] animate-pulse" />
+                  <span>Mostrar Controles</span>
+                </>
+              ) : (
+                <>
+                  <EyeOff className="w-4 h-4 text-[#c9a265]" />
+                  <span>Ocultar Controles</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -1264,22 +1319,24 @@ export function Colaboradores() {
 
                         {/* AÇÕES */}
                         <td className="py-3.5 px-4 text-right">
-                          <div className="inline-flex items-center space-x-1.5">
-                            <button
-                              onClick={() => handleOpenEdit(colab)}
-                              title="Editar colaborador"
-                              className="p-1.5 rounded-lg bg-[#131924] hover:bg-[#c9a265]/20 border border-[#2d3748] hover:border-[#c9a265] text-slate-300 hover:text-[#dfbe85] transition-all cursor-pointer"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(colab.id, colab.name)}
-                              title="Apagar colaborador"
-                              className="p-1.5 rounded-lg bg-[#131924] hover:bg-rose-500/20 border border-[#2d3748] hover:border-rose-500/40 text-slate-300 hover:text-rose-300 transition-all cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          {isMaster && (
+                            <div className="inline-flex items-center space-x-1.5">
+                              <button
+                                onClick={() => handleOpenEdit(colab)}
+                                title="Editar colaborador"
+                                className="p-1.5 rounded-lg bg-[#131924] hover:bg-[#c9a265]/20 border border-[#2d3748] hover:border-[#c9a265] text-slate-300 hover:text-[#dfbe85] transition-all cursor-pointer"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(colab.id, colab.name)}
+                                title="Apagar colaborador"
+                                className="p-1.5 rounded-lg bg-[#131924] hover:bg-rose-500/20 border border-[#2d3748] hover:border-rose-500/40 text-slate-300 hover:text-rose-300 transition-all cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -1312,18 +1369,22 @@ export function Colaboradores() {
                       {colab.registration}
                     </span>
                     <div className="flex items-center space-x-1">
-                      <button
-                        onClick={() => handleOpenEdit(colab)}
-                        className="p-1.5 rounded-lg bg-[#131924] hover:bg-[#c9a265]/20 text-slate-400 hover:text-[#dfbe85] transition-all"
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(colab.id, colab.name)}
-                        className="p-1.5 rounded-lg bg-[#131924] hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-all"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      {isMaster && (
+                        <>
+                          <button
+                            onClick={() => handleOpenEdit(colab)}
+                            className="p-1.5 rounded-lg bg-[#131924] hover:bg-[#c9a265]/20 text-slate-400 hover:text-[#dfbe85] transition-all cursor-pointer"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(colab.id, colab.name)}
+                            className="p-1.5 rounded-lg bg-[#131924] hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 

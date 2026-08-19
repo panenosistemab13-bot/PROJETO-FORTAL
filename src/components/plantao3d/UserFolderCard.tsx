@@ -1,31 +1,12 @@
 import React from 'react';
 import {
-  Folder,
-  FolderOpen,
-  User,
-  Clock,
-  Sun,
-  Moon,
-  Sparkles,
   Edit2,
   Trash2,
-  CheckCircle2,
-  AlertCircle,
-  FileText,
   Lock,
   Unlock,
-  ArrowRight,
-  Shield,
-  Layers,
-  Truck,
-  Coffee,
 } from 'lucide-react';
 import { PlantaoUser, PlantaoFolderItem } from '../../types/plantao3d';
-
-import iconFolder3d from '../../assets/images/icon_folder_3d_1787015156529.jpg';
-import iconBadge3d from '../../assets/images/icon_badge_3d_1787015174678.jpg';
-import iconCoffee3d from '../../assets/images/icon_coffee_3d_1787015165985.jpg';
-import iconTruck3d from '../../assets/images/icon_truck_3d_1787015195876.jpg';
+import { getCurrentUser, getAuthUsers } from '../../lib/authStore';
 
 interface UserFolderCardProps {
   user: PlantaoUser;
@@ -46,170 +27,122 @@ export function UserFolderCard({
   onDeleteUser,
   viewStyle = '3d',
 }: UserFolderCardProps) {
-  const isOwner = currentActiveUserId === user.id;
+  const currentUser = getCurrentUser();
+  const allAuthUsers = getAuthUsers();
+  
+  const matchedAuthUser = allAuthUsers.find(
+    au => au.plantaoFolderName?.trim().toLowerCase() === user.nome.trim().toLowerCase() ||
+          au.fixedName?.trim().toLowerCase() === user.nome.trim().toLowerCase() ||
+          au.login?.trim().toLowerCase() === user.nome.trim().toLowerCase()
+  );
+  
+  const profilePic = matchedAuthUser?.profilePic;
+
+  const isMaster = currentUser?.role?.toLowerCase().includes('mestre') || currentUser?.role === 'Mestre';
+  const isOwner = !!currentUser && (
+    currentUser.plantaoFolderId === user.id ||
+    currentUser.plantaoFolderName?.trim().toLowerCase() === user.nome.trim().toLowerCase() ||
+    currentUser.fixedName?.trim().toLowerCase() === user.nome.trim().toLowerCase() ||
+    currentUser.login?.trim().toLowerCase() === user.nome.trim().toLowerCase() ||
+    currentUser.id === user.id ||
+    currentActiveUserId === user.id
+  );
+
+  const canEditOrDelete = isMaster || isOwner;
   const userItems = items.filter((item) => item.userId === user.id);
 
   const occurrencesCount = userItems.filter((i) => i.tipo === 'ocorrencia').length;
-  const checklistsCount = userItems.filter((i) => i.tipo === 'checklist').length;
   const summariesCount = userItems.filter((i) => i.tipo === 'resumo_turno').length;
-  const pointsCount = userItems.filter((i) => i.tipo === 'pontuacao').length;
-
-  const latestItem = userItems[0];
 
   return (
     <div
       onClick={() => onOpenFolder(user)}
-      className="group relative rounded-3xl p-5 bg-gradient-to-b from-[#182030] via-[#121824] to-[#0c1017] border border-[#2b3c58] hover:border-[#c9a265] shadow-2xl hover:shadow-[0_16px_40px_rgba(201,162,101,0.25)] transition-all duration-300 transform hover:-translate-y-2 cursor-pointer select-none flex flex-col justify-between overflow-hidden"
+      className="group relative rounded-2xl p-4 border border-[#2b3c58] hover:border-[#c9a265] shadow-2xl hover:shadow-[0_12px_32px_rgba(201,162,101,0.2)] transition-all duration-300 transform hover:-translate-y-1.5 cursor-pointer select-none flex flex-col items-center justify-center overflow-hidden"
+      style={{
+        backgroundImage: profilePic ? `url(${profilePic})` : 'linear-gradient(to bottom, #182030, #121824, #0c1017)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
     >
-      {/* 3D Luxury Folder Tab Top Badge */}
-      <div className="absolute top-0 right-6 px-3.5 py-1 rounded-b-xl bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#8c672b] text-[#120e06] text-[10px] font-mono font-extrabold uppercase tracking-wider shadow-lg flex items-center space-x-1.5 border-b border-[#dfbe85]">
-        <Folder className="w-3 h-3 fill-current" />
-        <span>PASTA {user.turno.replace('Turno ', '')}</span>
-      </div>
+      {/* Background Overlay to ensure text readability */}
+      {profilePic && (
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0c1017] via-[#0c1017]/85 to-[#0c1017]/45 pointer-events-none" />
+      )}
+      {!profilePic && (
+        <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-[#c9a265]/5 to-transparent pointer-events-none" />
+      )}
 
-      {/* Subtle Golden Radial Glow */}
-      <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-[radial-gradient(circle,rgba(201,162,101,0.12),transparent_70%)] pointer-events-none" />
-
-      {/* Top Header with 3D Folder Icon, Avatar & User Info */}
-      <div className="space-y-4 pt-1">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3.5">
-            {/* 3D Rendered Leather Document Folder Icon with 3corações Seal */}
-            <div className="relative w-14 h-14 rounded-2xl overflow-hidden border-2 border-[#c9a265]/70 group-hover:border-[#dfbe85] shadow-xl shadow-black/60 flex-shrink-0 bg-[#080c14] transform group-hover:scale-105 transition-transform duration-300">
-              <img
-                src={iconFolder3d}
-                alt="Pasta Executiva 3D"
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute bottom-0 inset-x-0 h-4 bg-gradient-to-t from-black/80 to-transparent" />
-              {/* Floating initial badge */}
-              <div className="absolute top-1 left-1 px-1 rounded text-[9px] font-bold bg-black/60 text-[#dfbe85] border border-[#c9a265]/40 font-mono">
-                {user.avatarInitials}
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center space-x-2">
-                <h3 className="text-base font-bold text-white font-serif tracking-tight group-hover:text-[#dfbe85] transition-colors">
-                  {user.nome}
-                </h3>
-              </div>
-              <div className="flex items-center space-x-2 mt-1">
-                <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider border ${user.badgeColor} shadow-sm`}>
-                  {user.funcao}
-                </span>
-                <span className="text-[11px] text-slate-300 font-medium flex items-center space-x-1">
-                  {user.periodo === 'Diurno' ? (
-                    <Sun className="w-3.5 h-3.5 text-amber-400 inline" />
-                  ) : (
-                    <Moon className="w-3.5 h-3.5 text-indigo-400 inline" />
-                  )}
-                  <span>{user.periodo}</span>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* User Status Badge */}
-          <div className="flex flex-col items-end space-y-1">
-            <span
-              className={`px-2.5 py-0.5 rounded-full text-[9.5px] font-bold uppercase tracking-wider shadow-sm ${
-                user.status === 'Em Plantão'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50'
-                  : user.status === 'Transição'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
-                  : 'bg-slate-700/40 text-slate-300 border border-slate-600'
-              }`}
-            >
-              {user.status}
-            </span>
-          </div>
-        </div>
-
-        {/* Turno & Permission Indicator Bar with 3D Shield Badge */}
-        <div className="p-2.5 rounded-xl bg-[#090e18]/90 border border-[#223046] flex items-center justify-between text-xs shadow-inner">
-          <div className="flex items-center space-x-2 text-slate-200">
-            <Clock className="w-3.5 h-3.5 text-[#dfbe85]" />
-            <span className="font-semibold">{user.turno}</span>
-          </div>
-
+      {/* Content wrapper relative to overlay */}
+      <div className="relative z-10 w-full flex flex-col items-center">
+        {/* Lock/Unlock Icon top left */}
+        <div className="absolute -top-1 -left-1" title={isOwner ? "Sua Pasta (Edição Ativa)" : "Mural Coletivo (Somente Leitura)"}>
           {isOwner ? (
-            <span className="flex items-center space-x-1.5 text-[10.5px] text-emerald-300 font-bold bg-emerald-950/60 px-2.5 py-0.5 rounded-lg border border-emerald-500/40 shadow-sm">
-              <Unlock className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Sua Pasta (Edição Ativa)</span>
-            </span>
+            <Unlock className="w-3.5 h-3.5 text-emerald-400/70" />
           ) : (
-            <span className="flex items-center space-x-1.5 text-[10.5px] text-slate-300 font-medium bg-[#131b29] px-2.5 py-0.5 rounded-lg border border-[#2b3a50]">
-              <Lock className="w-3 h-3 text-slate-400" />
-              <span>Mural Coletivo</span>
-            </span>
+            <Lock className="w-3.5 h-3.5 text-slate-500/40" />
           )}
         </div>
 
-        {/* Folder Stats Mini-Grid with 3D Details */}
-        <div className="grid grid-cols-4 gap-2 pt-1 text-center">
-          <div className="p-2 rounded-xl bg-[#0b1019] border border-[#1f2c40] group-hover:border-[#c9a265]/40 transition-colors">
-            <div className="text-[10px] uppercase font-bold text-slate-400">Resumos</div>
-            <div className="text-sm font-bold text-white mt-0.5 font-mono">{summariesCount}</div>
+        {/* Actions top right */}
+        {canEditOrDelete && (
+          <div className="absolute -top-2 -right-2 flex items-center space-x-0.5" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => onEditUser(user)} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors" title="Editar">
+              <Edit2 className="w-3 h-3" />
+            </button>
+            <button onClick={() => onDeleteUser(user.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors" title="Excluir">
+              <Trash2 className="w-3 h-3" />
+            </button>
           </div>
-          <div className="p-2 rounded-xl bg-[#0b1019] border border-[#1f2c40] group-hover:border-amber-500/40 transition-colors">
-            <div className="text-[10px] uppercase font-bold text-amber-400">Ocorrênc.</div>
-            <div className="text-sm font-bold text-amber-300 mt-0.5 font-mono">{occurrencesCount}</div>
+        )}
+
+        {/* Avatar Circle */}
+        <div className="relative mt-1 mb-3">
+          <div className="w-[68px] h-[68px] rounded-full bg-[#080c14] border border-[#c9a265]/40 group-hover:border-[#dfbe85] shadow-[0_0_15px_rgba(201,162,101,0.12)] flex items-center justify-center transition-all duration-300 overflow-hidden">
+            {profilePic ? (
+               <img src={profilePic} alt={user.nome} className="w-full h-full object-cover" />
+            ) : (
+               <span className="text-lg font-bold text-[#dfbe85] font-serif tracking-wider">
+                 {user.avatarInitials}
+               </span>
+            )}
           </div>
-          <div className="p-2 rounded-xl bg-[#0b1019] border border-[#1f2c40] group-hover:border-blue-500/40 transition-colors">
-            <div className="text-[10px] uppercase font-bold text-blue-400">Pontos</div>
-            <div className="text-sm font-bold text-blue-300 mt-0.5 font-mono">{pointsCount}</div>
-          </div>
-          <div className="p-2 rounded-xl bg-[#0b1019] border border-[#1f2c40] group-hover:border-emerald-500/40 transition-colors">
-            <div className="text-[10px] uppercase font-bold text-emerald-400">Checks</div>
-            <div className="text-sm font-bold text-emerald-300 mt-0.5 font-mono">{checklistsCount}</div>
-          </div>
+          {/* Online Status Dot - Only visible when user is logged in (isOwner) */}
+          {isOwner && (
+            <div 
+              className="absolute bottom-0 right-0 w-4 h-4 rounded-full border-[2.5px] border-[#121824] bg-emerald-500"
+              title="Online"
+            />
+          )}
         </div>
 
-        {/* Latest Activity Preview */}
-        <div className="p-3 rounded-2xl bg-[#0c121d] border border-[#202d42] space-y-1">
-          <div className="flex items-center justify-between text-[10.5px]">
-            <span className="font-bold text-[#dfbe85] uppercase tracking-wider flex items-center space-x-1.5">
-              <FileText className="w-3.5 h-3.5 text-[#c9a265]" />
-              <span>Último Lançamento no Turno</span>
-            </span>
-            <span className="text-slate-400 font-mono">{latestItem ? `${latestItem.data} às ${latestItem.hora}` : 'Vazio'}</span>
+        {/* Name & Role */}
+        <h3 className="text-[15px] font-bold text-white font-serif tracking-tight text-center mb-1 drop-shadow-md">
+          {user.nome}
+        </h3>
+        <div className="text-[9px] font-bold text-slate-300 uppercase tracking-widest text-center flex items-center justify-center space-x-1.5 drop-shadow-md">
+          <span className="text-[#c9a265]">{user.funcao}</span>
+          {user.periodo && (
+            <>
+              <span className="text-slate-500">•</span>
+              <span>{user.periodo}</span>
+            </>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-[#c9a265]/20 to-transparent mt-4 mb-3.5" />
+
+        {/* Stats */}
+        <div className="flex items-center justify-center space-x-8 w-full">
+          <div className="flex flex-col items-center">
+            <span className="text-[18px] font-black text-white font-mono leading-none mb-1 drop-shadow-md">{occurrencesCount}</span>
+            <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400 drop-shadow-md">Ocorrências</span>
           </div>
-          <p className="text-xs text-slate-200 line-clamp-2 leading-relaxed">
-            {latestItem ? latestItem.titulo : 'Nenhum registro lançado ainda nesta pasta.'}
-          </p>
+          <div className="flex flex-col items-center">
+            <span className="text-[18px] font-black text-white font-mono leading-none mb-1 drop-shadow-md">{summariesCount}</span>
+            <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400 drop-shadow-md">Resumos</span>
+          </div>
         </div>
-      </div>
-
-      {/* Footer Card Controls */}
-      <div className="pt-4 mt-3 border-t border-[#202d42] flex items-center justify-between">
-        {/* User Management Actions */}
-        <div className="flex items-center space-x-1.5" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={() => onEditUser(user)}
-            className="p-1.5 rounded-xl bg-[#141c2a] hover:bg-[#212e44] text-slate-300 hover:text-white border border-[#263750] transition-all cursor-pointer"
-            title="Editar Usuário / Pasta"
-          >
-            <Edit2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => onDeleteUser(user.id)}
-            className="p-1.5 rounded-xl bg-[#141c2a] hover:bg-rose-950/60 text-slate-300 hover:text-rose-300 border border-[#263750] hover:border-rose-700/50 transition-all cursor-pointer"
-            title="Excluir Pasta & Usuário"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Open Folder CTA Button with Gold Sheen */}
-        <button
-          onClick={() => onOpenFolder(user)}
-          className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] hover:brightness-110 text-[#140e06] font-bold text-xs flex items-center space-x-1.5 shadow-lg shadow-[#c9a265]/20 transition-all cursor-pointer active:scale-95"
-        >
-          <span>Abrir Pasta 3D</span>
-          <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-        </button>
       </div>
     </div>
   );

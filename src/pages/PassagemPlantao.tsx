@@ -30,6 +30,13 @@ import {
 
 import { PlantaoUser, PlantaoFolderItem, FuncaoType, TurnoType, PeriodoType } from '../types/plantao3d';
 import { INITIAL_PLANTAO_USERS, INITIAL_PLANTAO_ITEMS } from '../data/initialPlantaoUsers';
+import { getCurrentUser } from '../lib/authStore';
+import {
+  subscribeToPlantaoUsers,
+  savePlantaoUsersToRtdb,
+  subscribeToPlantaoItems,
+  savePlantaoItemsToRtdb,
+} from '../lib/realtimeDb';
 import {
   FestivalCafe360Viewer,
   WALLPAPERS_360_THEMES,
@@ -46,7 +53,7 @@ import iconBadge3d from '../assets/images/icon_badge_3d_1787015174678.jpg';
 import iconTruck3d from '../assets/images/icon_truck_3d_1787015195876.jpg';
 
 export function PassagemPlantao() {
-  // 1. Persistent Users & Folder Items state
+  // 1. Persistent Users & Folder Items state (Synced in Real-Time with Firebase RTDB)
   const [users, setUsers] = useState<PlantaoUser[]>(() => {
     const saved = localStorage.getItem('plantao_users_v2');
     if (saved) {
@@ -71,8 +78,30 @@ export function PassagemPlantao() {
     return INITIAL_PLANTAO_ITEMS;
   });
 
-  // 2. Active Logged-in Operator selector (defaults to Cristiane Fialho)
+  // Subscribe to Firebase Realtime Database
+  useEffect(() => {
+    const unsubUsers = subscribeToPlantaoUsers((rtdbUsers) => {
+      if (rtdbUsers && rtdbUsers.length > 0) {
+        setUsers(rtdbUsers);
+      }
+    });
+    const unsubItems = subscribeToPlantaoItems((rtdbItems) => {
+      if (rtdbItems) {
+        setItems(rtdbItems);
+      }
+    });
+    return () => {
+      unsubUsers();
+      unsubItems();
+    };
+  }, []);
+
+  // 2. Active Logged-in Operator selector (defaults to logged-in user linked folder or Cristiane Fialho)
   const [currentActiveUserId, setCurrentActiveUserId] = useState<string>(() => {
+    const activeAuthUser = getCurrentUser();
+    if (activeAuthUser?.plantaoFolderId) {
+      return activeAuthUser.plantaoFolderId;
+    }
     const saved = localStorage.getItem('plantao_active_user_id');
     return saved || 'user-cristiane-fialho';
   });
@@ -86,8 +115,6 @@ export function PassagemPlantao() {
     }
     return WALLPAPERS_360_THEMES[0];
   });
-
-
 
   // View Mode: 'mural3d' | 'grid'
   const [viewMode, setViewMode] = useState<'mural3d' | 'grid'>('mural3d');
@@ -109,15 +136,6 @@ export function PassagemPlantao() {
   const [userForNewItem, setUserForNewItem] = useState<PlantaoUser | null>(null);
   const [editingItem, setEditingItem] = useState<PlantaoFolderItem | null>(null);
 
-  // Sync to LocalStorage
-  useEffect(() => {
-    localStorage.setItem('plantao_users_v2', JSON.stringify(users));
-  }, [users]);
-
-  useEffect(() => {
-    localStorage.setItem('plantao_items_v2', JSON.stringify(items));
-  }, [items]);
-
   useEffect(() => {
     localStorage.setItem('plantao_active_user_id', currentActiveUserId);
   }, [currentActiveUserId]);
@@ -126,19 +144,33 @@ export function PassagemPlantao() {
     localStorage.setItem('plantao_wallpaper_360_id', activeWallpaperTheme.id);
   }, [activeWallpaperTheme]);
 
-
+  // One-time clear of all mock data for the user
+  useEffect(() => {
+    if (items.length > 0) {
+      const isMock = items.some(i => typeof i.id === 'string' && (i.id.includes('item-cf') || i.id.includes('item-ac') || i.id.includes('item-la') || i.id.includes('item-gf')));
+      if (isMock) {
+        // Find if there are any legit user-created items
+        const legitItems = items.filter(i => !i.id.includes('item-cf') && !i.id.includes('item-ac') && !i.id.includes('item-la') && !i.id.includes('item-gf'));
+        setItems(legitItems);
+        savePlantaoItemsToRtdb(legitItems);
+      }
+    }
+  }, [items]);
 
   const activeUser = useMemo(() => {
     return users.find((u) => u.id === currentActiveUserId) || users[0];
   }, [users, currentActiveUserId]);
 
-  // Handlers for User Management
+  // Handlers for User Management (Synced with Firebase RTDB)
   const handleSaveUser = (savedUser: PlantaoUser) => {
+    let updatedUsers: PlantaoUser[];
     if (editingUser) {
-      setUsers(users.map((u) => (u.id === savedUser.id ? savedUser : u)));
+      updatedUsers = users.map((u) => (u.id === savedUser.id ? savedUser : u));
     } else {
-      setUsers([...users, savedUser]);
+      updatedUsers = [...users, savedUser];
     }
+    setUsers(updatedUsers);
+    savePlantaoUsersToRtdb(updatedUsers);
     setIsUserModalOpen(false);
     setEditingUser(null);
   };
@@ -152,8 +184,12 @@ export function PassagemPlantao() {
         `Tem certeza que deseja remover a pasta e o usuário "${userToDelete.nome}" da Passagem de Plantão?`
       )
     ) {
-      setUsers(users.filter((u) => u.id !== userId));
-      setItems(items.filter((i) => i.userId !== userId));
+      const updatedUsers = users.filter((u) => u.id !== userId);
+      const updatedItems = items.filter((i) => i.userId !== userId);
+      setUsers(updatedUsers);
+      setItems(updatedItems);
+      savePlantaoUsersToRtdb(updatedUsers);
+      savePlantaoItemsToRtdb(updatedItems);
 
       if (currentActiveUserId === userId && users.length > 1) {
         const remaining = users.filter((u) => u.id !== userId);
@@ -166,37 +202,42 @@ export function PassagemPlantao() {
     }
   };
 
-  // Handlers for Folder Items
+  // Handlers for Folder Items (Synced with Firebase RTDB)
   const handleSaveItem = (savedItem: PlantaoFolderItem) => {
+    let updatedItems: PlantaoFolderItem[];
     if (editingItem) {
-      setItems(items.map((i) => (i.id === savedItem.id ? savedItem : i)));
+      updatedItems = items.map((i) => (i.id === savedItem.id ? savedItem : i));
     } else {
-      setItems([savedItem, ...items]);
+      updatedItems = [savedItem, ...items];
     }
+    setItems(updatedItems);
+    savePlantaoItemsToRtdb(updatedItems);
     setIsAddItemModalOpen(false);
     setEditingItem(null);
   };
 
   const handleDeleteItem = (itemId: string) => {
     if (window.confirm('Tem certeza que deseja apagar este lançamento do seu turno?')) {
-      setItems(items.filter((i) => i.id !== itemId));
+      const updatedItems = items.filter((i) => i.id !== itemId);
+      setItems(updatedItems);
+      savePlantaoItemsToRtdb(updatedItems);
     }
   };
 
   const handleToggleChecklist = (itemId: string, checkId: string) => {
-    setItems(
-      items.map((item) => {
-        if (item.id === itemId && item.checklistItems) {
-          return {
-            ...item,
-            checklistItems: item.checklistItems.map((c) =>
-              c.id === checkId ? { ...c, concluido: !c.concluido } : c
-            ),
-          };
-        }
-        return item;
-      })
-    );
+    const updatedItems = items.map((item) => {
+      if (item.id === itemId && item.checklistItems) {
+        return {
+          ...item,
+          checklistItems: item.checklistItems.map((c) =>
+            c.id === checkId ? { ...c, concluido: !c.concluido } : c
+          ),
+        };
+      }
+      return item;
+    });
+    setItems(updatedItems);
+    savePlantaoItemsToRtdb(updatedItems);
   };
 
   // Filtered Users
@@ -249,119 +290,10 @@ export function PassagemPlantao() {
                 <h1 className="text-2xl 2xl:text-3xl font-bold text-white tracking-tight font-serif">
                   Passagem de Plantão
                 </h1>
-                <span className="px-3 py-0.5 rounded-full bg-gradient-to-r from-[#dfbe85]/20 to-[#c9a265]/20 border border-[#c9a265]/60 text-[#dfbe85] text-[11px] font-extrabold font-mono uppercase tracking-wider shadow">
-                  Ícones 3D &bull; Papéis de Parede 4K 360°
-                </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-300 mt-1 font-medium">
                 Pastas Individuais dos Colaboradores &bull; Ambiente Virtual 360° em Ultra Definição 4K
               </p>
-            </div>
-          </div>
-
-          {/* Right Action Bar & Operator Identity Selector */}
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Active User Switcher Pill with 3D Badge */}
-            <div className="flex items-center space-x-2.5 p-2 rounded-2xl bg-[#0a0f18]/95 border-2 border-[#2b3c58] shadow-xl">
-              <div className="relative w-7 h-7 rounded-xl overflow-hidden border border-[#c9a265] flex-shrink-0">
-                <img
-                  src={iconBadge3d}
-                  alt="Emblema 3D"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Operador Ativo:
-                </span>
-                <select
-                  value={currentActiveUserId}
-                  onChange={(e) => setCurrentActiveUserId(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-[#dfbe85] focus:outline-none cursor-pointer pr-3 font-serif"
-                >
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id} className="bg-[#0c1017] text-white">
-                      {u.nome} ({u.funcao} - {u.turno})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Add User / Pasta Button */}
-            <button
-              onClick={() => {
-                setEditingUser(null);
-                setIsUserModalOpen(true);
-              }}
-              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] hover:brightness-110 text-[#140e06] font-bold text-xs flex items-center space-x-2 shadow-xl shadow-[#c9a265]/25 transition-all cursor-pointer active:scale-95"
-            >
-              <UserPlus className="w-4 h-4 stroke-[2.5]" />
-              <span>+ Adicionar Usuário / Pasta</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 3D KPI Metrics Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-5 mt-5 border-t border-[#253347]">
-          <div className="flex items-center space-x-3 p-2.5 rounded-2xl bg-[#0a0f18]/70 border border-[#202d42]">
-            <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#c9a265]/50 flex-shrink-0">
-              <img
-                src={iconFolder3d}
-                alt="Pasta 3D"
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-white font-mono">{users.length} Pastas</div>
-              <div className="text-[10px] text-slate-400 font-semibold uppercase">Mural Coletivo</div>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3 p-2.5 rounded-2xl bg-[#0a0f18]/70 border border-[#202d42]">
-            <div className="w-10 h-10 rounded-xl overflow-hidden border border-amber-500/50 flex-shrink-0">
-              <img
-                src={iconCoffee3d}
-                alt="Resumos 3D"
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-amber-300 font-mono">{totalSummaries} Resumos</div>
-              <div className="text-[10px] text-slate-400 font-semibold uppercase">Passagens Registradas</div>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3 p-2.5 rounded-2xl bg-[#0a0f18]/70 border border-[#202d42]">
-            <div className="w-10 h-10 rounded-xl overflow-hidden border border-red-500/50 flex-shrink-0">
-              <img
-                src={iconTruck3d}
-                alt="Caminhão 3D"
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-red-300 font-mono">{totalOccurrences} Ocorrências</div>
-              <div className="text-[10px] text-slate-400 font-semibold uppercase">Em Monitoramento</div>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3 p-2.5 rounded-2xl bg-[#0a0f18]/70 border border-[#202d42]">
-            <div className="w-10 h-10 rounded-xl overflow-hidden border border-emerald-500/50 flex-shrink-0">
-              <img
-                src={iconBadge3d}
-                alt="Emblema 3D"
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-emerald-300 font-mono">{totalChecklists} Checklists</div>
-              <div className="text-[10px] text-slate-400 font-semibold uppercase">Rotinas Concluídas</div>
             </div>
           </div>
         </div>
@@ -393,62 +325,12 @@ export function PassagemPlantao() {
       </div>
 
 
-      {/* Section Header: Mural 3D de Pastas */}
+      {/* Section: Mural de Pastas */}
       <div id="mural-pastas-section" className="relative z-10 pt-2 space-y-4">
-        {/* Controls, View Switcher & Search Bar */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-[#0f141f]/95 border-2 border-[#1e283b] shadow-xl space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div className="flex items-center space-x-3">
-              {/* 3D Folder Icon for Section */}
-              <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-[#c9a265] shadow flex-shrink-0">
-                <img
-                  src={iconFolder3d}
-                  alt="Pasta 3D"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-white font-serif flex items-center space-x-2">
-                  <span>Mural 3D &bull; Pastas dos Colaboradores</span>
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Pastas individuais vinculadas. Visualização coletiva com permissões exclusivas do proprietário.
-                </p>
-              </div>
-            </div>
-
-            {/* View Mode Toggle */}
-            <div className="flex items-center rounded-xl bg-[#141b28] border border-[#232f45] p-1 self-start md:self-auto shadow-inner">
-              <button
-                onClick={() => setViewMode('mural3d')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer ${
-                  viewMode === 'mural3d'
-                    ? 'bg-[#c9a265] text-[#140e06] font-bold shadow'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Move3D className="w-3.5 h-3.5" />
-                <span>Mural 3D</span>
-              </button>
-
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer ${
-                  viewMode === 'grid'
-                    ? 'bg-[#c9a265] text-[#140e06] font-bold shadow'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Grade Executiva</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Search and Filters Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 pt-1">
-            {/* Search Input */}
+        {/* Search and Filters Bar - Hiddem per request */}
+        {/* 
+        <div className="p-4 sm:p-5 rounded-3xl bg-[#0f141f]/95 border-2 border-[#1e283b] shadow-xl">
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
             <div className="sm:col-span-4 relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
               <input
@@ -460,7 +342,6 @@ export function PassagemPlantao() {
               />
             </div>
 
-            {/* Turno Filter */}
             <div className="sm:col-span-3">
               <select
                 value={filterTurno}
@@ -474,7 +355,6 @@ export function PassagemPlantao() {
               </select>
             </div>
 
-            {/* Período Filter */}
             <div className="sm:col-span-3">
               <select
                 value={filterPeriodo}
@@ -487,7 +367,6 @@ export function PassagemPlantao() {
               </select>
             </div>
 
-            {/* Função Filter */}
             <div className="sm:col-span-2">
               <select
                 value={filterFuncao}
@@ -503,17 +382,7 @@ export function PassagemPlantao() {
             </div>
           </div>
         </div>
-
-        {/* Active Users Count Summary */}
-        <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-          <div>
-            Exibindo <span className="font-bold text-white">{filteredUsers.length}</span> pastas 3D de colaboradores
-          </div>
-          <div className="text-[11px] text-[#dfbe85] flex items-center space-x-1.5 font-medium">
-            <Shield className="w-3.5 h-3.5 text-[#c9a265]" />
-            <span>Permissões individuais ativas &bull; Visualização coletiva</span>
-          </div>
-        </div>
+        */}
 
         {/* 3D Mural Display */}
         {filteredUsers.length === 0 ? (
@@ -536,7 +405,7 @@ export function PassagemPlantao() {
           </div>
         ) : (
           <div
-            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 ${
+            className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 ${
               viewMode === 'mural3d' ? 'perspective-1000' : ''
             }`}
           >

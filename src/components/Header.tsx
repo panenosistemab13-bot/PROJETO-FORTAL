@@ -15,8 +15,11 @@ import {
   Sunset,
   Maximize2,
   Minimize2,
+  Database as DatabaseIcon,
+  Wifi,
 } from 'lucide-react';
 import { getCurrentUser, User as AuthUser } from '../lib/authStore';
+import { subscribeToConnectionStatus } from '../lib/realtimeDb';
 
 interface HeaderProps {
   onOpenAlerts: () => void;
@@ -36,6 +39,7 @@ export function Header({ onOpenAlerts, onOpenSafetyStatus, onLogout, onOpenPerfi
   const [isFullscreen, setIsFullscreen] = useState(false);
   
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [isRtdbConnected, setIsRtdbConnected] = useState<boolean>(true);
 
   const fetchUser = () => {
     setCurrentUser(getCurrentUser());
@@ -44,8 +48,12 @@ export function Header({ onOpenAlerts, onOpenSafetyStatus, onLogout, onOpenPerfi
   useEffect(() => {
     fetchUser();
     window.addEventListener('auth-user-updated', fetchUser);
+    const unsubRtdb = subscribeToConnectionStatus((connected) => {
+      setIsRtdbConnected(connected);
+    });
     return () => {
       window.removeEventListener('auth-user-updated', fetchUser);
+      unsubRtdb();
     };
   }, []);
 
@@ -92,7 +100,7 @@ export function Header({ onOpenAlerts, onOpenSafetyStatus, onLogout, onOpenPerfi
         Icon = Sunset;
       } else {
         newGreeting = `Boa noite, ${userName}`;
-        newSubGreeting = 'Tenha um ótimo dia de trabalho!';
+        newSubGreeting = 'Tenha uma ótima noite de trabalho!';
         Icon = Moon;
       }
 

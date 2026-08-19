@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ClipboardList,
   Search,
@@ -21,6 +21,7 @@ import {
   Edit2,
   Trash2,
   MessageSquarePlus,
+  ChevronDown,
 } from 'lucide-react';
 import {
   PlantaoItem,
@@ -30,15 +31,27 @@ import {
   OPERACAO_CONFIG,
   INITIAL_PLANTAO_ITEMS,
 } from '../data/plantaoData';
+import { PlantaoUser, PlantaoFolderItem } from '../types/plantao3d';
+import {
+  subscribeToOcorrencias,
+  saveOcorrenciasToRtdb,
+  clearAllOcorrenciasFromRtdb,
+  savePlantaoItemsToRtdb,
+} from '../lib/realtimeDb';
 import { PlantaoRecordModal } from '../components/modals/PlantaoRecordModal';
 import { AddPlantaoUpdateModal } from '../components/modals/AddPlantaoUpdateModal';
+import { getCurrentUser } from '../lib/authStore';
 
 export function Ocorrencias() {
   const [records, setRecords] = useState<PlantaoItem[]>(() => {
     const saved = localStorage.getItem('plantao_records_v2');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Clean legacy test mock items if present
+          return parsed.filter((item: PlantaoItem) => !item.id.startsWith('plantao-'));
+        }
       } catch (e) {
         console.error('Error loading saved plantao records:', e);
       }
@@ -46,12 +59,34 @@ export function Ocorrencias() {
     return INITIAL_PLANTAO_ITEMS;
   });
 
+  // Subscribe to Firebase Realtime Database
+  useEffect(() => {
+    const unsubscribe = subscribeToOcorrencias((rtdbRecords) => {
+      if (rtdbRecords) {
+        // Purge test records if any legacy data exists
+        const cleaned = rtdbRecords.filter((item) => !item.id.startsWith('plantao-'));
+        if (cleaned.length !== rtdbRecords.length) {
+          saveRecords(cleaned);
+        } else {
+          setRecords(cleaned);
+        }
+      } else {
+        setRecords([]);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<PlantaoStatus | 'all'>('all');
   const [selectedOperacao, setSelectedOperacao] = useState<PlantaoOperacao | 'all'>('all');
   const [selectedTurno, setSelectedTurno] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
 
+  // Subscription and clear hooks
+  const currentUserObj = getCurrentUser();
+  const isMaster = currentUserObj?.role?.toLowerCase().includes('mestre') || currentUserObj?.role === 'Mestre';
+  
   // Modals
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<PlantaoItem | null>(null);
@@ -59,26 +94,171 @@ export function Ocorrencias() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [recordToUpdate, setRecordToUpdate] = useState<PlantaoItem | null>(null);
 
-  // Sync to local storage
+  // Sync to Firebase RTDB & local storage
   const saveRecords = (newRecords: PlantaoItem[]) => {
     setRecords(newRecords);
-    localStorage.setItem('plantao_records_v2', JSON.stringify(newRecords));
+    saveOcorrenciasToRtdb(newRecords);
   };
 
   // Handlers
   const handleSaveRecord = (savedRecord: PlantaoItem) => {
     if (editingRecord) {
       saveRecords(records.map((r) => (r.id === savedRecord.id ? savedRecord : r)));
+
+      // Also update status and title in corresponding folder item if it exists
+      const savedItemsStr = localStorage.getItem('plantao_items_v2');
+      if (savedItemsStr) {
+        try {
+          const folderItems: PlantaoFolderItem[] = JSON.parse(savedItemsStr);
+          const updatedFolderItems = folderItems.map((item) => {
+            if (item.id === `item-from-ocorrencia-${savedRecord.id}`) {
+              return {
+                ...item,
+                titulo: savedRecord.eventualidade || 'Ocorrência Operacional',
+                descricao: savedRecord.descricaoOcorrencia || '',
+                veiculoPlaca: savedRecord.placa || undefined,
+                statusOcorrencia: savedRecord.status,
+                prioridade: savedRecord.status === 'atenção' ? 'critica' as const : 'normal' as const,
+              };
+            }
+            return item;
+          });
+          savePlantaoItemsToRtdb(updatedFolderItems);
+        } catch (e) {
+          console.error('Error updating linked folder item on save edit:', e);
+        }
+      }
     } else {
       saveRecords([savedRecord, ...records]);
+
+      // Automatically link newly added occurrence to the creator's folder in Passagem de Plantão
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        // Load plantao users from localStorage to match the folder
+        const savedUsersStr = localStorage.getItem('plantao_users_v2');
+        let plantaoUsers: PlantaoUser[] = [];
+        if (savedUsersStr) {
+          try {
+            plantaoUsers = JSON.parse(savedUsersStr);
+          } catch (e) {
+            console.error('Error loading plantao users in Ocorrencias page:', e);
+          }
+        }
+
+        const matchedUser = plantaoUsers.find(
+          (pu) =>
+            pu.id === currentUser.plantaoFolderId ||
+            pu.nome.trim().toLowerCase() === currentUser.plantaoFolderName?.trim().toLowerCase() ||
+            pu.nome.trim().toLowerCase() === currentUser.fixedName?.trim().toLowerCase() ||
+            pu.nome.trim().toLowerCase() === currentUser.login?.trim().toLowerCase()
+        );
+
+        if (matchedUser) {
+          // Load current folder items
+          const savedItemsStr = localStorage.getItem('plantao_items_v2');
+          let folderItems: PlantaoFolderItem[] = [];
+          if (savedItemsStr) {
+            try {
+              folderItems = JSON.parse(savedItemsStr);
+            } catch (e) {
+              console.error('Error loading plantao items in Ocorrencias page:', e);
+            }
+          }
+
+          // Generate new PlantaoFolderItem with predictable id and statusOcorrencia field
+          const newFolderItem: PlantaoFolderItem = {
+            id: `item-from-ocorrencia-${savedRecord.id}`,
+            userId: matchedUser.id,
+            userName: matchedUser.nome,
+            tipo: 'ocorrencia',
+            titulo: savedRecord.eventualidade || 'Ocorrência Operacional',
+            descricao: savedRecord.descricaoOcorrencia || '',
+            data: savedRecord.dataRegistro || new Date().toLocaleDateString('pt-BR'),
+            hora: savedRecord.horaRegistro || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            prioridade: savedRecord.status === 'atenção' ? 'critica' : 'normal',
+            veiculoPlaca: savedRecord.placa || undefined,
+            statusAcompanhamento: 'acompanhar',
+            statusOcorrencia: savedRecord.status,
+            createdAt: Date.now(),
+          };
+
+          const updatedFolderItems = [newFolderItem, ...folderItems];
+          savePlantaoItemsToRtdb(updatedFolderItems);
+        }
+      }
     }
     setIsRecordModalOpen(false);
     setEditingRecord(null);
   };
 
+  const handleStatusChange = (recordId: string, newStatus: PlantaoStatus) => {
+    // 1. Update the status of the occurrence record globally
+    const updatedRecords = records.map((r) => {
+      if (r.id === recordId) {
+        return { ...r, status: newStatus };
+      }
+      return r;
+    });
+    saveRecords(updatedRecords);
+
+    // 2. Also update the linked folder item in Passagem de Plantão
+    const savedItemsStr = localStorage.getItem('plantao_items_v2');
+    if (savedItemsStr) {
+      try {
+        const folderItems: PlantaoFolderItem[] = JSON.parse(savedItemsStr);
+        const updatedFolderItems = folderItems.map((item) => {
+          if (item.id === `item-from-ocorrencia-${recordId}`) {
+            let statusAcompanhamento: 'concluido' | 'acompanhar' | 'pendente_proximo_turno' | 'informativo' = 'acompanhar';
+            if (newStatus === 'resolvido') {
+              statusAcompanhamento = 'concluido';
+            } else if (newStatus === 'para conhecimento') {
+              statusAcompanhamento = 'informativo';
+            } else if (newStatus === 'atenção') {
+              statusAcompanhamento = 'pendente_proximo_turno';
+            } else if (newStatus === 'registro grid') {
+              statusAcompanhamento = 'concluido';
+            } else {
+              statusAcompanhamento = 'acompanhar';
+            }
+
+            return {
+              ...item,
+              statusOcorrencia: newStatus,
+              statusAcompanhamento,
+              prioridade: newStatus === 'atenção' ? 'critica' as const : 'normal' as const,
+            };
+          }
+          return item;
+        });
+        savePlantaoItemsToRtdb(updatedFolderItems);
+      } catch (e) {
+        console.error('Error updating status for linked folder item:', e);
+      }
+    }
+  };
+
   const handleDeleteRecord = (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir este registro de ocorrência?')) {
       saveRecords(records.filter((r) => r.id !== id));
+
+      // Also delete from user's plantao folder
+      const savedItemsStr = localStorage.getItem('plantao_items_v2');
+      if (savedItemsStr) {
+        try {
+          const folderItems: PlantaoFolderItem[] = JSON.parse(savedItemsStr);
+          const updatedFolderItems = folderItems.filter((item) => item.id !== `item-from-ocorrencia-${id}`);
+          savePlantaoItemsToRtdb(updatedFolderItems);
+        } catch (e) {
+          console.error('Error deleting linked folder item:', e);
+        }
+      }
+    }
+  };
+
+  const handleClearAllRecords = () => {
+    if (window.confirm('Tem certeza que deseja limpar todos os registros da pasta de ocorrências?')) {
+      saveRecords([]);
+      clearAllOcorrenciasFromRtdb();
     }
   };
 
@@ -109,7 +289,7 @@ export function Ocorrencias() {
                 ...existingHistorico,
                 {
                   dataHora: nowStr,
-                  operador: 'Operador CCO',
+                  operador: getCurrentUser()?.fixedName || 'Operador CCO',
                   texto: updateData.novoTexto,
                 },
               ],
@@ -198,6 +378,17 @@ export function Ocorrencias() {
             </button>
           </div>
 
+          {records.length > 0 && isMaster && (
+            <button
+              onClick={handleClearAllRecords}
+              className="px-3.5 py-2 rounded-xl bg-[#1c1214] border border-rose-900/50 hover:border-rose-500 text-rose-300 hover:text-rose-100 text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer"
+              title="Limpar todos os registros da pasta"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+              <span className="hidden sm:inline">Limpar Registros</span>
+            </button>
+          )}
+
           <button
             onClick={handlePrint}
             className="px-3.5 py-2 rounded-xl bg-[#151c28] border border-[#26354d] hover:border-[#c9a265] text-slate-300 hover:text-white text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer"
@@ -206,16 +397,18 @@ export function Ocorrencias() {
             <span className="hidden sm:inline">Imprimir</span>
           </button>
 
-          <button
-            onClick={() => {
-              setEditingRecord(null);
-              setIsRecordModalOpen(true);
-            }}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] hover:brightness-110 text-[#140e06] font-bold text-xs flex items-center space-x-2 shadow-lg shadow-[#c9a265]/20 transition-all cursor-pointer active:scale-95"
-          >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>+ Novo Registro de Plantão</span>
-          </button>
+          {currentUserObj && (
+            <button
+              onClick={() => {
+                setEditingRecord(null);
+                setIsRecordModalOpen(true);
+              }}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#dfbe85] via-[#c9a265] to-[#a37c3f] hover:brightness-110 text-[#140e06] font-bold text-xs flex items-center space-x-2 shadow-lg shadow-[#c9a265]/20 transition-all cursor-pointer active:scale-95"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>+ Novo Registro de Plantão</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -261,7 +454,7 @@ export function Ocorrencias() {
               <option value="resolvido">Resolvido</option>
               <option value="para conhecimento">Para Conhecimento</option>
               <option value="atenção">Atenção</option>
-              <option value="registrado no grid">Registrado no Grid</option>
+              <option value="registro grid">Registro Grid</option>
             </select>
           </div>
 
@@ -300,8 +493,26 @@ export function Ocorrencias() {
               <tbody className="divide-y divide-[#1b2535]">
                 {filteredRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-10 text-slate-400">
-                      Nenhuma ocorrência encontrada.
+                    <td colSpan={8} className="text-center py-16 px-4">
+                      <div className="flex flex-col items-center justify-center max-w-md mx-auto space-y-3">
+                        <div className="w-14 h-14 rounded-2xl bg-[#171e2c] border border-[#26354d] flex items-center justify-center text-[#c9a265] shadow-inner">
+                          <ClipboardList className="w-7 h-7" />
+                        </div>
+                        <h3 className="text-base font-bold text-white">Nenhum registro de ocorrência</h3>
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          A pasta de ocorrências está limpa e sem pendências no momento. Clique no botão abaixo para adicionar um novo registro operacional.
+                        </p>
+                        <button
+                          onClick={() => {
+                            setEditingRecord(null);
+                            setIsRecordModalOpen(true);
+                          }}
+                          className="mt-2 px-4 py-2 rounded-xl bg-[#c9a265] hover:bg-[#dfbe85] text-[#140e06] font-bold text-xs flex items-center space-x-2 transition-all cursor-pointer shadow-lg shadow-[#c9a265]/20"
+                        >
+                          <Plus className="w-4 h-4 stroke-[2.5]" />
+                          <span>Cadastrar Primeira Ocorrência</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -388,12 +599,29 @@ export function Ocorrencias() {
 
                         {/* Status */}
                         <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold uppercase tracking-wider border ${statusCfg.badgeBg} ${statusCfg.badgeText} ${statusCfg.badgeBorder}`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dotColor}`} />
-                            <span>{statusCfg.label}</span>
-                          </span>
+                          {currentUserObj ? (
+                            <div className="relative inline-block">
+                              <select
+                                value={item.status}
+                                onChange={(e) => handleStatusChange(item.id, e.target.value as PlantaoStatus)}
+                                className={`appearance-none pl-3 pr-7 py-1 rounded-full text-[10.5px] font-bold uppercase tracking-wider border outline-none cursor-pointer transition-all ${statusCfg.badgeBg} ${statusCfg.badgeText} ${statusCfg.badgeBorder} focus:ring-1 focus:ring-[#c9a265]`}
+                              >
+                                <option value="acompanhar" className="bg-[#0f141d] text-blue-400">Acompanhar</option>
+                                <option value="resolvido" className="bg-[#0f141d] text-emerald-400">Resolvido</option>
+                                <option value="para conhecimento" className="bg-[#0f141d] text-slate-300">Para Conhecimento</option>
+                                <option value="atenção" className="bg-[#0f141d] text-amber-400">Atenção</option>
+                                <option value="registro grid" className="bg-[#0f141d] text-purple-300">Registro Grid</option>
+                              </select>
+                              <ChevronDown className="w-3.5 h-3.5 text-[#c9a265] absolute right-2 top-2 pointer-events-none" />
+                            </div>
+                          ) : (
+                            <span
+                              className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold uppercase tracking-wider border ${statusCfg.badgeBg} ${statusCfg.badgeText} ${statusCfg.badgeBorder}`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dotColor}`} />
+                              <span>{statusCfg.label}</span>
+                            </span>
+                          )}
                         </td>
 
                         {/* Ações */}
@@ -409,23 +637,27 @@ export function Ocorrencias() {
                             >
                               <MessageSquarePlus className="w-3.5 h-3.5 text-[#dfbe85]" />
                             </button>
-                            <button
-                              onClick={() => {
-                                setEditingRecord(item);
-                                setIsRecordModalOpen(true);
-                              }}
-                              className="p-1.5 rounded-lg bg-[#141b28] hover:bg-[#202c42] text-slate-300 hover:text-white border border-[#232f45] transition-all cursor-pointer"
-                              title="Editar Ocorrência"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteRecord(item.id)}
-                              className="p-1.5 rounded-lg bg-[#141b28] hover:bg-rose-950/50 text-slate-300 hover:text-rose-300 border border-[#232f45] transition-all cursor-pointer"
-                              title="Excluir Ocorrência"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            {isMaster && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setEditingRecord(item);
+                                    setIsRecordModalOpen(true);
+                                  }}
+                                  className="p-1.5 rounded-lg bg-[#141b28] hover:bg-[#202c42] text-slate-300 hover:text-white border border-[#232f45] transition-all cursor-pointer"
+                                  title="Editar Ocorrência"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteRecord(item.id)}
+                                  className="p-1.5 rounded-lg bg-[#141b28] hover:bg-rose-950/50 text-slate-300 hover:text-rose-300 border border-[#232f45] transition-all cursor-pointer"
+                                  title="Excluir Ocorrência"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -438,8 +670,31 @@ export function Ocorrencias() {
         </div>
       ) : (
         /* Cards View */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredRecords.map((item) => {
+        filteredRecords.length === 0 ? (
+          <div className="p-12 rounded-2xl border border-[#232f45] bg-[#0c1017] shadow-xl text-center">
+            <div className="flex flex-col items-center justify-center max-w-md mx-auto space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-[#171e2c] border border-[#26354d] flex items-center justify-center text-[#c9a265] shadow-inner">
+                <ClipboardList className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-bold text-white">Nenhum registro de ocorrência</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                A pasta de ocorrências está limpa e sem pendências no momento. Clique no botão abaixo para adicionar um novo registro operacional.
+              </p>
+              <button
+                onClick={() => {
+                  setEditingRecord(null);
+                  setIsRecordModalOpen(true);
+                }}
+                className="mt-2 px-4 py-2 rounded-xl bg-[#c9a265] hover:bg-[#dfbe85] text-[#140e06] font-bold text-xs flex items-center space-x-2 transition-all cursor-pointer shadow-lg shadow-[#c9a265]/20"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+                <span>Cadastrar Primeira Ocorrência</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredRecords.map((item) => {
             const statusCfg = STATUS_CONFIG[item.status] || {
               label: item.status,
               badgeBg: 'bg-slate-800',
@@ -461,11 +716,28 @@ export function Ocorrencias() {
                       <Clock className="w-3 h-3" />
                       <span>{item.dataRegistro} {item.horaRegistro}</span>
                     </span>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusCfg.badgeBg} ${statusCfg.badgeText} ${statusCfg.badgeBorder}`}
-                    >
-                      {statusCfg.label}
-                    </span>
+                    {currentUserObj ? (
+                      <div className="relative inline-block">
+                        <select
+                          value={item.status}
+                          onChange={(e) => handleStatusChange(item.id, e.target.value as PlantaoStatus)}
+                          className={`appearance-none pl-2.5 pr-6.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border outline-none cursor-pointer transition-all ${statusCfg.badgeBg} ${statusCfg.badgeText} ${statusCfg.badgeBorder} focus:ring-1 focus:ring-[#c9a265]`}
+                        >
+                          <option value="acompanhar" className="bg-[#0f141d] text-blue-400">Acompanhar</option>
+                          <option value="resolvido" className="bg-[#0f141d] text-emerald-400">Resolvido</option>
+                          <option value="para conhecimento" className="bg-[#0f141d] text-slate-300">Para Conhecimento</option>
+                          <option value="atenção" className="bg-[#0f141d] text-amber-400">Atenção</option>
+                          <option value="registro grid" className="bg-[#0f141d] text-purple-300">Registro Grid</option>
+                        </select>
+                        <ChevronDown className="w-3 h-3 text-[#c9a265] absolute right-1.5 top-1.5 pointer-events-none" />
+                      </div>
+                    ) : (
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusCfg.badgeBg} ${statusCfg.badgeText} ${statusCfg.badgeBorder}`}
+                      >
+                        {statusCfg.label}
+                      </span>
+                    )}
                   </div>
 
                   {/* Operação & Placa */}
@@ -524,29 +796,34 @@ export function Ocorrencias() {
                   </button>
 
                   <div className="flex items-center space-x-1.5">
-                    <button
-                      onClick={() => {
-                        setEditingRecord(item);
-                        setIsRecordModalOpen(true);
-                      }}
-                      className="p-1.5 rounded-lg bg-[#141b28] hover:bg-[#202c42] text-slate-300 hover:text-white border border-[#232f45] transition-all cursor-pointer"
-                      title="Editar"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteRecord(item.id)}
-                      className="p-1.5 rounded-lg bg-[#141b28] hover:bg-rose-950/50 text-slate-300 hover:text-rose-300 border border-[#232f45] transition-all cursor-pointer"
-                      title="Excluir"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {isMaster && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditingRecord(item);
+                            setIsRecordModalOpen(true);
+                          }}
+                          className="p-1.5 rounded-lg bg-[#141b28] hover:bg-[#202c42] text-slate-300 hover:text-white border border-[#232f45] transition-all cursor-pointer"
+                          title="Editar"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRecord(item.id)}
+                          className="p-1.5 rounded-lg bg-[#141b28] hover:bg-rose-950/50 text-slate-300 hover:text-rose-300 border border-[#232f45] transition-all cursor-pointer"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
+        )
       )}
 
       {/* Modals */}

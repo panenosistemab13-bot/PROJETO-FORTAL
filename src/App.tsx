@@ -21,11 +21,17 @@ import { AllAlertsModal } from './components/modals/AllAlertsModal';
 import { SafetyAuditModal } from './components/modals/SafetyAuditModal';
 import { PromoModal } from './components/modals/PromoModal';
 import { User as AuthUser } from './lib/authStore';
+import { seedInitialRealtimeData } from './lib/realtimeDb';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem('cco_auth_logged_in') === 'true';
   });
+
+  useEffect(() => {
+    // Seed initial data to Firebase Realtime Database on startup
+    seedInitialRealtimeData();
+  }, []);
   const [activeTab, setActiveTab] = useState('menu_inicial');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 

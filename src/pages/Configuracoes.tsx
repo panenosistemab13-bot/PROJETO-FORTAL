@@ -1,22 +1,158 @@
 import React, { useState, useEffect } from 'react';
 import { User, getAuthUsers, saveAuthUsers, getCurrentUser } from '../lib/authStore';
-import { Settings, ShieldAlert, Plus, Edit2, Trash2, Save, X, KeyRound, User as UserIcon, CheckCircle2 } from 'lucide-react';
+import { 
+  Settings, 
+  ShieldAlert, 
+  Plus, 
+  Edit2, 
+  Trash2, 
+  Save, 
+  X, 
+  KeyRound, 
+  User as UserIcon, 
+  CheckCircle2, 
+  Database,
+  Cloud,
+  RefreshCw,
+  Server,
+  Briefcase,
+  Folder
+} from 'lucide-react';
+import { 
+  subscribeToAuthUsers, 
+  saveAuthUsersToRtdb, 
+  subscribeToConnectionStatus, 
+  seedInitialRealtimeData,
+  subscribeToPlantaoUsers,
+  savePlantaoUsersToRtdb
+} from '../lib/realtimeDb';
+import { PlantaoUser } from '../types/plantao3d';
+import { INITIAL_PLANTAO_USERS } from '../data/initialPlantaoUsers';
+
+const DEFAULT_ROLES = ['Líder', 'Interino', 'Operador', 'Mestre', 'Administrador CCO'];
+
+const getSavedRoles = (): string[] => {
+  const rolesStr = localStorage.getItem('cco_user_roles');
+  if (rolesStr) {
+    try {
+      const parsed = JSON.parse(rolesStr);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  return DEFAULT_ROLES;
+};
+
+const saveRoles = (roles: string[]) => {
+  localStorage.setItem('cco_user_roles', JSON.stringify(roles));
+};
 
 export function Configuracoes() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+  const [isRtdbConnected, setIsRtdbConnected] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   const [isEditing, setIsEditing] = useState(false);
   const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
   const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Roles state
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
+  const [isAddingRole, setIsAddingRole] = useState(false);
+  const [newRole, setNewRole] = useState('');
+
+  const visibleRoles = availableRoles.filter(r => r !== 'Mestre' || currentUser?.login?.toLowerCase() === 'jeff');
+
+  // Plantao Folders (Passagem de Plantão)
+  const [plantaoFolders, setPlantaoFolders] = useState<PlantaoUser[]>(() => {
+    const saved = localStorage.getItem('plantao_users_v2');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return INITIAL_PLANTAO_USERS;
+  });
+
+  useEffect(() => {
+    setAvailableRoles(getSavedRoles());
+    const unsubPlantao = subscribeToPlantaoUsers((rtdbUsers) => {
+      if (rtdbUsers && rtdbUsers.length > 0) {
+        setPlantaoFolders(rtdbUsers);
+      }
+    });
+    return () => {
+      unsubPlantao();
+    };
+  }, []);
+
+  const handleAddRole = () => {
+    if (!newRole.trim()) return;
+    const trimmed = newRole.trim();
+    if (availableRoles.includes(trimmed)) {
+      setErrorMsg('Esta função já existe.');
+      setTimeout(() => setErrorMsg(''), 3000);
+      return;
+    }
+    const updatedRoles = [...availableRoles, trimmed];
+    setAvailableRoles(updatedRoles);
+    saveRoles(updatedRoles);
+    if (editingUser) {
+      setEditingUser({ ...editingUser, role: trimmed });
+    }
+    setNewRole('');
+    setIsAddingRole(false);
+  };
+
+  const handleDeleteRole = (roleToDelete: string) => {
+    if (roleToDelete === 'Mestre' || roleToDelete === 'Líder' || roleToDelete === 'Operador') {
+      setErrorMsg('Não é permitido excluir as funções padrão do sistema.');
+      setTimeout(() => setErrorMsg(''), 3000);
+      return;
+    }
+    const updatedRoles = availableRoles.filter(r => r !== roleToDelete);
+    setAvailableRoles(updatedRoles);
+    saveRoles(updatedRoles);
+    if (editingUser?.role === roleToDelete) {
+      setEditingUser({ ...editingUser, role: updatedRoles[0] || 'Operador' });
+    }
+  };
 
   useEffect(() => {
     const user = getCurrentUser();
     setCurrentUser(user);
     if (user?.role === 'Mestre') {
       setUsers(getAuthUsers());
+      const unsubAuth = subscribeToAuthUsers((rtdbUsers) => {
+        if (rtdbUsers && rtdbUsers.length > 0) {
+          setUsers(rtdbUsers);
+        }
+      });
+      const unsubConn = subscribeToConnectionStatus((conn) => {
+        setIsRtdbConnected(conn);
+      });
+      return () => {
+        unsubAuth();
+        unsubConn();
+      };
     }
   }, []);
+
+  const handleForceSync = async () => {
+    setIsSyncing(true);
+    await seedInitialRealtimeData();
+    await saveAuthUsersToRtdb(users);
+    setTimeout(() => {
+      setIsSyncing(false);
+      setSuccessMsg('Banco de dados Realtime sincronizado com sucesso no Firebase!');
+      setTimeout(() => setSuccessMsg(''), 4000);
+    }, 800);
+  };
 
   if (currentUser?.role !== 'Mestre') {
     return (
@@ -35,12 +171,20 @@ export function Configuracoes() {
       fixedName: '',
       login: '',
       password: '',
-      role: 'Usuário Padrão',
+      role: availableRoles[0] || 'Líder',
+      plantaoFolderId: '',
+      plantaoFolderName: '',
     });
     setIsEditing(true);
   };
 
   const handleEdit = (user: User) => {
+    // If user's role is not in availableRoles, add it so it shows selected
+    if (user.role && !availableRoles.includes(user.role)) {
+      const updated = [...availableRoles, user.role];
+      setAvailableRoles(updated);
+      saveRoles(updated);
+    }
     setEditingUser(user);
     setIsEditing(true);
   };
@@ -52,7 +196,8 @@ export function Configuracoes() {
       const newUsers = users.filter(u => u.id !== id);
       setUsers(newUsers);
       saveAuthUsers(newUsers);
-      setSuccessMsg('Usuário excluído.');
+      saveAuthUsersToRtdb(newUsers);
+      setSuccessMsg('Usuário excluído e sincronizado com o Firebase Realtime DB.');
       setTimeout(() => setSuccessMsg(''), 3000);
     }
   };
@@ -60,14 +205,62 @@ export function Configuracoes() {
   const handleSave = () => {
     if (!editingUser?.fixedName || !editingUser?.login || !editingUser?.password) return;
 
+    let targetFolderId = editingUser.plantaoFolderId;
+    let targetFolderName = editingUser.plantaoFolderName;
+
+    // If user chose to create a new folder automatically
+    if (targetFolderId === '__CREATE_NEW__') {
+      const newFolderId = `user-${Date.now()}`;
+      const initials = editingUser.fixedName
+        .split(' ')
+        .filter(Boolean)
+        .map(n => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase() || 'OP';
+
+      const newPlantaoUser: PlantaoUser = {
+        id: newFolderId,
+        nome: editingUser.fixedName,
+        funcao: (editingUser.role as any) || 'Operador',
+        turno: 'Turno A',
+        periodo: 'Diurno',
+        avatarColor: 'from-[#c9a265] to-[#8c672b]',
+        avatarInitials: initials,
+        badgeColor: 'border-[#c9a265] text-[#dfbe85] bg-[#c9a265]/20',
+        status: 'Ativo',
+        totalRegistros: 0,
+        ultimoRegistro: 'Criado agora'
+      };
+
+      const updatedPlantao = [...plantaoFolders, newPlantaoUser];
+      setPlantaoFolders(updatedPlantao);
+      localStorage.setItem('plantao_users_v2', JSON.stringify(updatedPlantao));
+      savePlantaoUsersToRtdb(updatedPlantao);
+
+      targetFolderId = newFolderId;
+      targetFolderName = editingUser.fixedName;
+    } else if (targetFolderId) {
+      const found = plantaoFolders.find(f => f.id === targetFolderId);
+      if (found) {
+        targetFolderName = found.nome;
+      }
+    }
+
+    const userPayload: Partial<User> = {
+      ...editingUser,
+      plantaoFolderId: targetFolderId || '',
+      plantaoFolderName: targetFolderName || '',
+    };
+
     let newUsers = [...users];
-    if (editingUser.id) {
+    if (userPayload.id) {
       // Edit existing
-      newUsers = newUsers.map(u => u.id === editingUser.id ? { ...u, ...editingUser } as User : u);
+      newUsers = newUsers.map(u => u.id === userPayload.id ? { ...u, ...userPayload } as User : u);
     } else {
       // Create new
       const newUser: User = {
-        ...editingUser,
+        ...userPayload,
         id: `user_${Date.now()}`
       } as User;
       newUsers.push(newUser);
@@ -75,25 +268,26 @@ export function Configuracoes() {
 
     setUsers(newUsers);
     saveAuthUsers(newUsers);
+    saveAuthUsersToRtdb(newUsers);
     setIsEditing(false);
     setEditingUser(null);
-    setSuccessMsg('Configurações salvas.');
+    setSuccessMsg('Usuário salvo e sincronizado com sucesso!');
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto animate-in fade-in">
+    <div className="w-full max-w-5xl mx-auto animate-in fade-in pb-12">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-2xl font-serif font-bold text-white flex items-center space-x-3">
             <Settings className="w-6 h-6 text-[#c9a265]" />
             <span>Configurações do Sistema</span>
           </h2>
-          <p className="text-sm text-slate-400 mt-1">Gerenciamento de contas e permissões (Acesso Mestre)</p>
+          <p className="text-sm text-slate-400 mt-1">Gerenciamento de contas, pastas de plantão e permissões (Acesso Mestre)</p>
         </div>
         <button
           onClick={handleCreateNew}
-          className="px-4 py-2 rounded-xl bg-[#c9a265] text-[#140e06] font-bold text-xs flex items-center space-x-2 hover:opacity-90"
+          className="px-4 py-2 rounded-xl bg-[#c9a265] text-[#140e06] font-bold text-xs flex items-center space-x-2 hover:opacity-90 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Novo Usuário</span>
@@ -107,10 +301,18 @@ export function Configuracoes() {
         </div>
       )}
 
+      {errorMsg && (
+        <div className="mb-6 p-3 rounded-xl bg-rose-950/70 border border-rose-800/80 text-rose-200 text-xs flex items-center space-x-2.5">
+          <ShieldAlert className="w-4 h-4 shrink-0 text-rose-400" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
       {isEditing ? (
         <div className="bg-[#0c1017]/85 border border-[#c9a265]/30 rounded-2xl p-6 shadow-xl mb-8">
-          <h3 className="text-lg font-bold text-white mb-6">
-            {editingUser?.id ? 'Editar Usuário' : 'Criar Novo Usuário'}
+          <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+            <UserIcon className="w-5 h-5 text-[#c9a265]" />
+            <span>{editingUser?.id ? 'Editar Usuário' : 'Criar Novo Usuário'}</span>
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
@@ -130,37 +332,200 @@ export function Configuracoes() {
                 value={editingUser?.login || ''}
                 onChange={(e) => setEditingUser({ ...editingUser, login: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl bg-[#141b26] border border-[#242d3d] focus:border-[#c9a265] text-sm text-white outline-none"
+                placeholder="Ex: jefferson.silva"
               />
             </div>
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-slate-300">Senha</label>
               <input
-                type="text" // using text so master can see what they set
+                type="text"
                 value={editingUser?.password || ''}
                 onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl bg-[#141b26] border border-[#242d3d] focus:border-[#c9a265] text-sm text-white outline-none"
+                placeholder="Digite a senha"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-300">Cargo / Função</label>
-              <input
-                type="text"
-                value={editingUser?.role || ''}
-                onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl bg-[#141b26] border border-[#242d3d] focus:border-[#c9a265] text-sm text-white outline-none"
-              />
+              <div className="flex justify-between items-center">
+                <label className="text-[11px] font-bold text-slate-300">Função</label>
+                {!isAddingRole && (
+                  <button 
+                    type="button" 
+                    onClick={() => setIsAddingRole(true)}
+                    className="text-[10px] text-[#c9a265] hover:text-white flex items-center cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3 h-3 mr-1" /> Adicionar
+                  </button>
+                )}
+              </div>
+
+              {isAddingRole ? (
+                <div className="flex items-center space-x-1.5">
+                  <input
+                    type="text"
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value)}
+                    placeholder="Nova função..."
+                    className="w-full px-3 py-2 rounded-xl bg-[#141b26] border border-[#242d3d] focus:border-[#c9a265] text-xs text-white outline-none"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddRole()}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddRole}
+                    className="p-2 rounded-xl bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 cursor-pointer"
+                    title="Confirmar"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setIsAddingRole(false); setNewRole(''); }}
+                    className="p-2 rounded-xl bg-rose-600/20 text-rose-400 hover:bg-rose-600/40 cursor-pointer"
+                    title="Cancelar"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col space-y-2">
+                  <div className="relative flex items-center">
+                    <div className="absolute left-3 text-[#c9a265] pointer-events-none">
+                      <Briefcase className="w-4 h-4" />
+                    </div>
+                    <select
+                      value={editingUser?.role || visibleRoles[0] || 'Líder'}
+                      onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                      className="w-full pl-9 pr-10 py-2 rounded-xl bg-[#141b26] border border-[#242d3d] focus:border-[#c9a265] text-sm text-white outline-none appearance-none cursor-pointer"
+                    >
+                      {visibleRoles.map(r => (
+                        <option key={r} value={r} className="bg-[#141b26] text-white py-1">
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 pointer-events-none text-slate-400 text-xs">
+                      ▼
+                    </div>
+                  </div>
+                  {visibleRoles.length > 1 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {visibleRoles.map(r => (
+                        <div 
+                          key={r} 
+                          className={`flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] transition-all ${
+                            r === editingUser?.role 
+                              ? 'bg-[#c9a265]/20 text-[#dfbe85] border border-[#c9a265]/50 font-bold' 
+                              : 'bg-[#141b26] text-slate-400 border border-[#242d3d]'
+                          }`}
+                        >
+                          <span 
+                            className="cursor-pointer"
+                            onClick={() => setEditingUser({ ...editingUser, role: r })}
+                          >
+                            {r}
+                          </span>
+                          {r !== 'Mestre' && r !== 'Líder' && r !== 'Operador' && (
+                            <button 
+                              type="button"
+                              onClick={() => handleDeleteRole(r)}
+                              className="hover:text-rose-400 ml-1 cursor-pointer"
+                              title="Remover função"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Vincular à Pasta (Passagem de Plantão) */}
+            <div className="space-y-1 md:col-span-2 pt-1 border-t border-[#1f2737]/80 mt-1">
+              <div className="flex justify-between items-center">
+                <label className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                  <Folder className="w-3.5 h-3.5 text-[#c9a265]" />
+                  <span>Vincular à Pasta (Página Passagem de Plantão)</span>
+                </label>
+                <span className="text-[10px] text-slate-400">Associa os relatórios e registros de turno</span>
+              </div>
+
+              <div className="relative flex items-center">
+                <div className="absolute left-3 text-[#c9a265] pointer-events-none">
+                  <Folder className="w-4 h-4" />
+                </div>
+                <select
+                  value={editingUser?.plantaoFolderId || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '__CREATE_NEW__') {
+                      setEditingUser({
+                        ...editingUser,
+                        plantaoFolderId: '__CREATE_NEW__',
+                        plantaoFolderName: `📁 Nova Pasta: ${editingUser?.fixedName || 'Novo Usuário'}`
+                      });
+                    } else if (!val) {
+                      setEditingUser({
+                        ...editingUser,
+                        plantaoFolderId: '',
+                        plantaoFolderName: ''
+                      });
+                    } else {
+                      const selectedF = plantaoFolders.find(f => f.id === val);
+                      setEditingUser({
+                        ...editingUser,
+                        plantaoFolderId: val,
+                        plantaoFolderName: selectedF?.nome || val
+                      });
+                    }
+                  }}
+                  className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-[#141b26] border border-[#242d3d] focus:border-[#c9a265] text-sm text-white outline-none appearance-none cursor-pointer"
+                >
+                  <option value="" className="bg-[#141b26] text-slate-300">
+                    Nenhuma (Sem pasta vinculada)
+                  </option>
+                  <optgroup label="Pastas Existentes no Plantão" className="bg-[#141b26] text-[#dfbe85] font-bold">
+                    {plantaoFolders.map(folder => (
+                      <option key={folder.id} value={folder.id} className="bg-[#141b26] text-white">
+                        📁 {folder.nome} ({folder.funcao} • {folder.turno})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Ação Automática" className="bg-[#141b26] text-emerald-400 font-bold">
+                    <option value="__CREATE_NEW__" className="bg-[#141b26] text-emerald-300">
+                      ➕ Criar nova pasta no Plantão automaticamente com este nome
+                    </option>
+                  </optgroup>
+                </select>
+                <div className="absolute right-3 pointer-events-none text-slate-400 text-xs">
+                  ▼
+                </div>
+              </div>
+
+              {editingUser?.plantaoFolderId && editingUser.plantaoFolderId !== '__CREATE_NEW__' && (
+                <div className="text-[11px] text-emerald-400 flex items-center gap-1.5 pt-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>
+                    Vinculado à pasta de <strong>{editingUser.plantaoFolderName || plantaoFolders.find(f => f.id === editingUser.plantaoFolderId)?.nome}</strong>
+                  </span>
+                </div>
+              )}
             </div>
           </div>
+
           <div className="flex items-center justify-end space-x-3 mt-6 pt-4 border-t border-[#1f2737]">
             <button
               onClick={() => setIsEditing(false)}
-              className="px-4 py-2 rounded-xl text-slate-300 font-semibold text-xs hover:bg-[#1f2737]"
+              className="px-4 py-2 rounded-xl text-slate-300 font-semibold text-xs hover:bg-[#1f2737] cursor-pointer"
             >
               Cancelar
             </button>
             <button
               onClick={handleSave}
-              className="px-4 py-2 rounded-xl bg-[#c9a265] text-[#140e06] font-bold text-xs flex items-center space-x-2 hover:opacity-90"
+              className="px-4 py-2 rounded-xl bg-[#c9a265] text-[#140e06] font-bold text-xs flex items-center space-x-2 hover:opacity-90 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>Salvar Usuário</span>
@@ -176,6 +541,7 @@ export function Configuracoes() {
                 <th className="px-6 py-4 font-semibold">Login</th>
                 <th className="px-6 py-4 font-semibold">Senha</th>
                 <th className="px-6 py-4 font-semibold">Função</th>
+                <th className="px-6 py-4 font-semibold">Pasta Plantão</th>
                 <th className="px-6 py-4 font-semibold text-right">Ações</th>
               </tr>
             </thead>
@@ -200,10 +566,20 @@ export function Configuracoes() {
                     {user.role === 'Mestre' ? '••••••••' : user.password}
                   </td>
                   <td className="px-6 py-4 text-xs text-slate-300">{user.role}</td>
+                  <td className="px-6 py-4 text-xs">
+                    {user.plantaoFolderName || user.plantaoFolderId ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#c9a265]/15 border border-[#c9a265]/40 text-[#dfbe85] font-semibold text-xs">
+                        <Folder className="w-3.5 h-3.5 text-[#c9a265]" />
+                        <span>{user.plantaoFolderName || plantaoFolders.find(f => f.id === user.plantaoFolderId)?.nome || user.plantaoFolderId}</span>
+                      </span>
+                    ) : (
+                      <span className="text-slate-500 text-xs italic">Não vinculada</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-right space-x-2">
                     <button 
                       onClick={() => handleEdit(user)}
-                      className="p-2 rounded-lg bg-[#1f2737] text-slate-300 hover:text-white hover:bg-[#c9a265]/20 transition-colors"
+                      className="p-2 rounded-lg bg-[#1f2737] text-slate-300 hover:text-white hover:bg-[#c9a265]/20 transition-colors cursor-pointer"
                       title="Editar"
                     >
                       <Edit2 className="w-4 h-4" />
@@ -211,7 +587,7 @@ export function Configuracoes() {
                     {user.id !== 'master' && (
                       <button 
                         onClick={() => handleDelete(user.id)}
-                        className="p-2 rounded-lg bg-[#1f2737] text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors"
+                        className="p-2 rounded-lg bg-[#1f2737] text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
                         title="Excluir"
                       >
                         <Trash2 className="w-4 h-4" />
