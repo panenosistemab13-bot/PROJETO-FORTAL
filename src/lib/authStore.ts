@@ -52,3 +52,12 @@ export const getCurrentUser = (): User | null => {
 export const updateCurrentUserSession = (user: User) => {
   localStorage.setItem('cco_user', JSON.stringify(user));
 };
+
+export const isMasterUser = (user: User | null): boolean => {
+  if (!user) return false;
+  return (
+    user.id === 'master' ||
+    user.role?.toLowerCase() === 'mestre' ||
+    user.login?.toLowerCase() === 'jeff'
+  );
+};

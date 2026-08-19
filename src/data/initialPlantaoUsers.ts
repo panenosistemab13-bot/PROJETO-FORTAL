@@ -12,8 +12,8 @@ export const INITIAL_PLANTAO_USERS: PlantaoUser[] = [
     badgeColor: 'border-[#c9a265] text-[#dfbe85] bg-[#c9a265]/20',
     email: 'cristiane.fialho@3coracoes.com.br',
     status: 'Em Plantão',
-    totalRegistros: 4,
-    ultimoRegistro: 'Hoje às 16:45',
+    totalRegistros: 0,
+    ultimoRegistro: 'Nenhum registro',
   },
   {
     id: 'user-airton-carvalho',
@@ -26,8 +26,8 @@ export const INITIAL_PLANTAO_USERS: PlantaoUser[] = [
     badgeColor: 'border-amber-500/50 text-amber-300 bg-amber-500/20',
     email: 'airton.carvalho@3coracoes.com.br',
     status: 'Em Plantão',
-    totalRegistros: 3,
-    ultimoRegistro: 'Hoje às 15:20',
+    totalRegistros: 0,
+    ultimoRegistro: 'Nenhum registro',
   },
   {
     id: 'user-lucas-alves',
@@ -40,8 +40,8 @@ export const INITIAL_PLANTAO_USERS: PlantaoUser[] = [
     badgeColor: 'border-blue-500/50 text-blue-300 bg-blue-500/20',
     email: 'lucas.alves@3coracoes.com.br',
     status: 'Ativo',
-    totalRegistros: 3,
-    ultimoRegistro: 'Hoje às 14:10',
+    totalRegistros: 0,
+    ultimoRegistro: 'Nenhum registro',
   },
   {
     id: 'user-luzia-freitas',
@@ -54,8 +54,8 @@ export const INITIAL_PLANTAO_USERS: PlantaoUser[] = [
     badgeColor: 'border-purple-500/50 text-purple-300 bg-purple-500/20',
     email: 'luzia.freitas@3coracoes.com.br',
     status: 'Transição',
-    totalRegistros: 3,
-    ultimoRegistro: 'Ontem às 05:40',
+    totalRegistros: 0,
+    ultimoRegistro: 'Nenhum registro',
   },
   {
     id: 'user-gabriele-freire',
@@ -68,8 +68,8 @@ export const INITIAL_PLANTAO_USERS: PlantaoUser[] = [
     badgeColor: 'border-emerald-500/50 text-emerald-300 bg-emerald-500/20',
     email: 'gabriele.freire@3coracoes.com.br',
     status: 'Transição',
-    totalRegistros: 3,
-    ultimoRegistro: 'Ontem às 05:55',
+    totalRegistros: 0,
+    ultimoRegistro: 'Nenhum registro',
   },
 ];
 

@@ -20,8 +20,9 @@ import { AnalyticsModal } from './components/modals/AnalyticsModal';
 import { AllAlertsModal } from './components/modals/AllAlertsModal';
 import { SafetyAuditModal } from './components/modals/SafetyAuditModal';
 import { PromoModal } from './components/modals/PromoModal';
-import { User as AuthUser } from './lib/authStore';
+import { getCurrentUser, isMasterUser, User as AuthUser } from './lib/authStore';
 import { seedInitialRealtimeData } from './lib/realtimeDb';
+import { ShieldAlert } from 'lucide-react';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -125,7 +126,23 @@ export default function App() {
           )}
 
           {activeTab === 'configuracoes' && (
-            <Configuracoes />
+            isMasterUser(getCurrentUser()) ? (
+              <Configuracoes />
+            ) : (
+              <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center bg-[#151b26] border border-[#1f2737] rounded-2xl shadow-2xl">
+                <ShieldAlert className="w-16 h-16 text-[#ef4444] mb-4" />
+                <h2 className="text-xl font-bold text-white mb-2">Acesso Restrito às Configurações</h2>
+                <p className="text-xs text-[#94a3b8] max-w-md">
+                  A página de Configurações é de acesso exclusivo do usuário <strong className="text-[#dfbe85]">Mestre</strong>.
+                </p>
+                <button
+                  onClick={() => setActiveTab('menu_inicial')}
+                  className="mt-6 px-5 py-2 bg-[#c9a265] text-[#0c1017] rounded-xl font-bold text-xs hover:bg-[#dfbe85] transition-colors cursor-pointer"
+                >
+                  Voltar ao Menu Inicial
+                </button>
+              </div>
+            )
           )}
         </div>
       </main>

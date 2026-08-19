@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Home,
   Truck,
@@ -10,8 +10,10 @@ import {
   ChevronRight,
   Coffee,
   Sparkles,
+  Settings,
 } from 'lucide-react';
 import medallionImg from '../assets/images/medallion_dark_3c_1786935069743.jpg';
+import { getCurrentUser, isMasterUser } from '../lib/authStore';
 
 interface SidebarProps {
   activeTab: string;
@@ -22,6 +24,18 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeTab, setActiveTab, onOpenPromo, isCollapsed, setIsCollapsed }: SidebarProps) {
+  const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setCurrentUser(getCurrentUser());
+    };
+    window.addEventListener('auth-user-updated', handleAuthChange);
+    return () => window.removeEventListener('auth-user-updated', handleAuthChange);
+  }, []);
+
+  const isMaster = isMasterUser(currentUser);
+
   const navItems: Array<{
     id: string;
     label: string;
@@ -34,6 +48,10 @@ export function Sidebar({ activeTab, setActiveTab, onOpenPromo, isCollapsed, set
     { id: 'veiculos', label: 'Veículos', icon: Truck },
     { id: 'colaboradores', label: 'Colaboradores', icon: Users },
   ];
+
+  if (isMaster) {
+    navItems.push({ id: 'configuracoes', label: 'Configurações', icon: Settings, badge: 'Mestre' });
+  }
 
   return (
     <aside className={`${isCollapsed ? 'w-[72px]' : 'w-[245px] 2xl:w-[265px]'} bg-[#0c1017] border-r border-[#1e2533] flex flex-col h-full flex-shrink-0 select-none z-20 overflow-visible relative shadow-2xl transition-all duration-300 ease-in-out`}>

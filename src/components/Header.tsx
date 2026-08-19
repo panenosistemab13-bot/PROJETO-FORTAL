@@ -18,7 +18,7 @@ import {
   Database as DatabaseIcon,
   Wifi,
 } from 'lucide-react';
-import { getCurrentUser, User as AuthUser } from '../lib/authStore';
+import { getCurrentUser, isMasterUser, User as AuthUser } from '../lib/authStore';
 import { subscribeToConnectionStatus } from '../lib/realtimeDb';
 
 interface HeaderProps {
@@ -171,73 +171,8 @@ export function Header({ onOpenAlerts, onOpenSafetyStatus, onLogout, onOpenPerfi
         </div>
       </div>
 
-      {/* Right Controls: Notifications, Profile */}
+      {/* Right Controls: Profile */}
       <div className="flex items-center space-x-3.5 2xl:space-x-4">
-        {/* Bell Icon with Red Dot */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="w-9 h-9 rounded-xl bg-[#151b26] border border-[#1f2737] hover:border-[#c9a265]/50 flex items-center justify-center text-[#94a3b8] hover:text-[#f1f5f9] transition-colors relative cursor-pointer"
-            title="Notificações"
-          >
-            <Bell className="w-4 h-4" />
-            {notificationList.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#ef4444] text-white rounded-full text-[9px] font-bold flex items-center justify-center border border-[#0c1017]">
-                {notificationList.length}
-              </span>
-            )}
-          </button>
-
-          {/* Notifications Dropdown */}
-          {showNotifications && (
-            <div className="absolute right-0 top-11 w-80 bg-[#151b26] border border-[#c9a265]/50 rounded-xl p-3.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#1f2737]">
-                <span className="text-xs font-bold text-[#f1f5f9] uppercase tracking-wider">
-                  Alertas em Aberto
-                </span>
-                <span className="text-[10px] bg-[#10241e] text-[#34d399] border border-[#10b981]/40 px-1.5 py-0.5 rounded font-bold">
-                  0 Ativos
-                </span>
-              </div>
-              <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll">
-                {notificationList.length > 0 ? (
-                  notificationList.map((item) => (
-                    <div
-                      key={item.id}
-                      className="p-2.5 rounded-lg bg-[#0c1017] border border-[#1f2737] hover:border-[#c9a265]/50 transition-colors cursor-pointer"
-                      onClick={() => {
-                        setShowNotifications(false);
-                        onOpenAlerts();
-                      }}
-                    >
-                      <div className="flex items-center space-x-2 mb-0.5">
-                        <AlertTriangle className={`w-3.5 h-3.5 ${item.level === 'critical' ? 'text-[#ef4444]' : 'text-[#c9a265]'}`} />
-                        <span className="text-xs font-semibold text-[#f1f5f9] truncate">
-                          {item.title}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-[#94a3b8] pl-5">{item.unit} &bull; {item.time}</p>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-4 text-center">
-                    <p className="text-xs text-[#94a3b8]">Nenhuma notificação no momento.</p>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => {
-                  setShowNotifications(false);
-                  onOpenAlerts();
-                }}
-                className="w-full mt-2 py-1.5 text-center text-xs text-[#140e06] font-bold bg-gradient-to-r from-[#dfbe85] to-[#c9a265] rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
-              >
-                Ver Central de Alertas
-              </button>
-            </div>
-          )}
-        </div>
-
         {/* User Profile */}
         <div className="relative">
           <div
@@ -284,16 +219,18 @@ export function Header({ onOpenAlerts, onOpenSafetyStatus, onLogout, onOpenPerfi
                   <User className="w-3.5 h-3.5 text-[#c9a265]" />
                   <span>Perfil</span>
                 </button>
-                <button
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    onOpenConfig?.();
-                  }}
-                  className="w-full flex items-center space-x-2 px-3 py-1.5 text-xs text-[#cbd5e1] hover:text-white hover:bg-[#1f2737] rounded-lg transition-colors cursor-pointer"
-                >
-                  <Settings className="w-3.5 h-3.5 text-[#c9a265]" />
-                  <span>Configurações</span>
-                </button>
+                {isMasterUser(currentUser) && (
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      onOpenConfig?.();
+                    }}
+                    className="w-full flex items-center space-x-2 px-3 py-1.5 text-xs text-[#cbd5e1] hover:text-white hover:bg-[#1f2737] rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-[#c9a265]" />
+                    <span>Configurações</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setShowUserMenu(false);

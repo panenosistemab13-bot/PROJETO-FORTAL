@@ -54,19 +54,15 @@ export async function seedInitialRealtimeData(): Promise<void> {
       await set(usersRef, INITIAL_PLANTAO_USERS);
     }
 
-    // 2. Check & Seed Plantão Items / Handover records
+    // 2. Clear & Reset Plantão Items / Handover records (Starts completely empty)
     const itemsRef = ref(rtdb, DB_PATHS.PLANTAO_ITEMS);
-    const itemsSnap = await get(itemsRef);
-    if (!itemsSnap.exists() || !itemsSnap.val()) {
-      await set(itemsRef, INITIAL_PLANTAO_ITEMS);
-    }
+    await set(itemsRef, []);
+    localStorage.setItem('plantao_items_v2', JSON.stringify([]));
 
-    // 3. Check & Seed Ocorrências (starts empty, user-created real data only)
+    // 3. Clear & Reset Ocorrências (Starts completely empty)
     const ocorrenciasRef = ref(rtdb, DB_PATHS.OCORRENCIAS);
-    const ocorrenciasSnap = await get(ocorrenciasRef);
-    if (!ocorrenciasSnap.exists()) {
-      await set(ocorrenciasRef, []);
-    }
+    await set(ocorrenciasRef, []);
+    localStorage.setItem('plantao_records_v2', JSON.stringify([]));
 
     // 4. Check & Seed Auth Users
     const authUsersRef = ref(rtdb, DB_PATHS.AUTH_USERS);
@@ -311,5 +307,18 @@ export async function saveAuthUsersToRtdb(users: User[]): Promise<void> {
     await set(authRef, users);
   } catch (err) {
     console.warn('Saved auth users locally, RTDB sync will retry when online', err);
+  }
+}
+
+export async function clearAllPassagemEOcorrenciasData(): Promise<void> {
+  localStorage.setItem('plantao_items_v2', JSON.stringify([]));
+  localStorage.setItem('plantao_records_v2', JSON.stringify([]));
+  try {
+    const itemsRef = ref(rtdb, DB_PATHS.PLANTAO_ITEMS);
+    await set(itemsRef, []);
+    const ocorrenciasRef = ref(rtdb, DB_PATHS.OCORRENCIAS);
+    await set(ocorrenciasRef, []);
+  } catch (err) {
+    console.warn('Cleared local records:', err);
   }
 }
