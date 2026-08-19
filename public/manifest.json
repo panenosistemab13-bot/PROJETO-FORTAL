@@ -1,14 +1,13 @@
 {
-  "name": "Eventualidade",
-  "short_name": "Eventualidade",
-  "description": "Painel de controle e monitoramento de eventualidades para o CCO Café Três Corações.",
+  "name": "Painel de Controle - Café Três Corações",
+  "short_name": "3Corações CCO",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0c1017",
+  "background_color": "#110F0E",
   "theme_color": "#c9a265",
   "icons": [
     {
-      "src": "https://drive.google.com/uc?export=view&id=1lE-GcexOLoOeYs4wYDLuXJTPfAUAO1FX",
+      "src": "https://lh3.googleusercontent.com/d/1lE-GcexOLoOeYs4wYDLuXJTPfAUAO1FX",
       "sizes": "512x512",
       "type": "image/png"
     }
