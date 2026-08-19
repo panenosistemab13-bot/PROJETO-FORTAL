@@ -803,8 +803,7 @@ export function Colaboradores() {
   const activePanoramaImage = activePanorama === 'edificio_joao_lima' ? bgEdificioJoaoLima : bgEdificioJoaoLimaSede;
 
   return (
-    <div className="max-w-[2560px] mx-auto flex flex-col gap-5 relative z-10 select-none pb-16">
-
+    <div className="space-y-5 pb-12 animate-fade-in text-slate-200 select-none">
       {/* 3D 360-Degree Panorama: Edifício João Lima (Grupo 3corações) */}
       <ThreePanorama imageUrl={activePanoramaImage} interactive={hideContent} />
 
